@@ -1,0 +1,8 @@
+Lee atentamente el archivo README.md que está en la raíz del proyecto.
+Actúa como un Desarrollador Fullstack Senior.
+
+Quiero que nos enfoquemos en el avance de la primera semana (MVP):
+1. Genera el script de migración SQL para PostgreSQL + PostGIS basado en la Sección 3 del README.md.
+2. Ayúdame a estructurar la API en NestJS con el módulo de Autenticación (Login, Registro con Bcrypt y JWT).
+3. Mantén los nombres exactos de tablas y columnas especificados en el documento.
+4. Aunque en realidad ya tengo el schema.sql, puede que exista algunas mejoras que se me pueden estar yendo de las manos sin embargo necesito que mediante el contexto del readme.md uses toda esa informacin para revisar el schema y me hagas sugerencias que despues yo pueda confirmar para avanzar y aplicarlas.
