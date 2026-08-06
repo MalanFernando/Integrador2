@@ -1,2 +1,22 @@
 VistasHtml/
 Informe_Proyecto_Integrador_Eventos.pdf
+
+# Dependencias
+node_modules/
+
+# Builds
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Entorno y logs
+.env
+.env.local
+.env.*.local
+*.log
+
+# Archivos de Next.js/paquetes
+package-lock.json
+yarn.lock
