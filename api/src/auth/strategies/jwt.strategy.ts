@@ -32,6 +32,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!usuario || usuario.deletedAt) {
       throw new UnauthorizedException('Token inválido o usuario inactivo');
     }
+    if (usuario.estado === 'suspendido') {
+      throw new UnauthorizedException('Cuenta suspendida');
+    }
     return { id: usuario.id, email: usuario.email, rol: usuario.rol };
   }
 }

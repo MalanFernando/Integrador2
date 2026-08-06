@@ -24,5 +24,6 @@ export declare class AuthService {
             rol: string;
         };
     }>;
+    getProfile(id: string): Promise<Omit<import("../usuarios/entities/usuario.entity.js").Usuario, "passwordHash">>;
     private generateToken;
 }

@@ -23,7 +23,13 @@ let RolesGuard = class RolesGuard {
         if (!requiredRoles) {
             return true;
         }
-        const { user } = context.switchToHttp().getRequest();
+        const request = context
+            .switchToHttp()
+            .getRequest();
+        const user = request.user;
+        if (!user) {
+            return false;
+        }
         return requiredRoles.includes(user.rol);
     }
 };

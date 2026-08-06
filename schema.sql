@@ -1,5 +1,5 @@
 -- =============================================================================
--- HASTA LA VUELTA - FARRAPP
+-- HASTA LA VUELTA
 -- Migración SQL para PostgreSQL 15+ / PostGIS
 -- =============================================================================
 
@@ -14,6 +14,7 @@ DROP TRIGGER IF EXISTS trg_update_organizaciones_updated_at ON organizaciones CA
 DROP TRIGGER IF EXISTS trg_update_miembros_updated_at ON miembros_organizacion CASCADE;
 DROP TRIGGER IF EXISTS trg_update_establecimientos_updated_at ON establecimientos CASCADE;
 DROP TRIGGER IF EXISTS trg_update_eventos_updated_at ON eventos CASCADE;
+DROP TRIGGER IF EXISTS trg_update_localidades_updated_at ON localidades CASCADE;
 DROP TRIGGER IF EXISTS trg_update_reservas_updated_at ON reservas CASCADE;
 DROP TRIGGER IF EXISTS trg_update_resenas_updated_at ON resenas CASCADE;
 DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
@@ -281,6 +282,7 @@ CREATE TABLE favoritos (
 );
 
 CREATE TABLE seguidores (
+    id BIGSERIAL PRIMARY KEY,
     seguidor_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     seguido_usuario_id BIGINT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     seguido_organizacion_id BIGINT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,

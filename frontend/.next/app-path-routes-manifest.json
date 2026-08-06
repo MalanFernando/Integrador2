@@ -1,0 +1,23 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/admin/categorias/page": "/admin/categorias",
+  "/admin/dashboard/page": "/admin/dashboard",
+  "/admin/establecimientos/page": "/admin/establecimientos",
+  "/admin/eventos/page": "/admin/eventos",
+  "/admin/organizaciones/page": "/admin/organizaciones",
+  "/admin/registro/page": "/admin/registro",
+  "/admin/reportes/page": "/admin/reportes",
+  "/admin/resenas/page": "/admin/resenas",
+  "/admin/usuarios/page": "/admin/usuarios",
+  "/eventos/[id]/page": "/eventos/[id]",
+  "/eventos/page": "/eventos",
+  "/favoritos/page": "/favoritos",
+  "/login/page": "/login",
+  "/mapa/page": "/mapa",
+  "/mis-reservas/page": "/mis-reservas",
+  "/organizaciones/[id]/page": "/organizaciones/[id]",
+  "/page": "/",
+  "/perfil/page": "/perfil",
+  "/register/page": "/register"
+}

@@ -22,7 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message =
         typeof exResponse === 'string'
           ? exResponse
-          : (exResponse as Record<string, unknown>).message as string;
+          : ((exResponse as Record<string, unknown>).message as string);
     }
 
     response.status(status).json({

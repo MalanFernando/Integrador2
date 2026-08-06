@@ -22,4 +22,9 @@ export declare class AuthController {
             rol: string;
         };
     }>;
+    getProfile(req: {
+        user: {
+            id: string;
+        };
+    }): Promise<Omit<import("../usuarios/entities/usuario.entity.js").Usuario, "passwordHash">>;
 }

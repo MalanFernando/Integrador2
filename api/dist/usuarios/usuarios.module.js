@@ -10,6 +10,8 @@ exports.UsuariosModule = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const usuario_entity_js_1 = require("./entities/usuario.entity.js");
+const evento_entity_js_1 = require("../eventos/entities/evento.entity.js");
+const seguidor_entity_js_1 = require("../social/entities/seguidor.entity.js");
 const usuarios_service_js_1 = require("./usuarios.service.js");
 const usuarios_controller_js_1 = require("./usuarios.controller.js");
 let UsuariosModule = class UsuariosModule {
@@ -17,7 +19,7 @@ let UsuariosModule = class UsuariosModule {
 exports.UsuariosModule = UsuariosModule;
 exports.UsuariosModule = UsuariosModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([usuario_entity_js_1.Usuario])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([usuario_entity_js_1.Usuario, evento_entity_js_1.Evento, seguidor_entity_js_1.Seguidor])],
         controllers: [usuarios_controller_js_1.UsuariosController],
         providers: [usuarios_service_js_1.UsuariosService],
         exports: [usuarios_service_js_1.UsuariosService],

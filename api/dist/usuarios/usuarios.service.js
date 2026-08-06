@@ -17,10 +17,17 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const usuario_entity_js_1 = require("./entities/usuario.entity.js");
+const evento_entity_js_1 = require("../eventos/entities/evento.entity.js");
+const seguidor_entity_js_1 = require("../social/entities/seguidor.entity.js");
+const utils_js_1 = require("../common/utils.js");
 let UsuariosService = class UsuariosService {
     usuariosRepo;
-    constructor(usuariosRepo) {
+    eventosRepo;
+    seguidoresRepo;
+    constructor(usuariosRepo, eventosRepo, seguidoresRepo) {
         this.usuariosRepo = usuariosRepo;
+        this.eventosRepo = eventosRepo;
+        this.seguidoresRepo = seguidoresRepo;
     }
     async findByEmail(email) {
         return this.usuariosRepo.findOne({ where: { email } });
@@ -37,11 +44,38 @@ let UsuariosService = class UsuariosService {
         });
         return this.usuariosRepo.save(usuario);
     }
+    async updateProfile(id, dto) {
+        const usuario = await this.findOneById(id);
+        if (!usuario || usuario.deletedAt) {
+            throw new common_1.NotFoundException('Usuario no encontrado');
+        }
+        Object.assign(usuario, dto);
+        return this.usuariosRepo.save(usuario);
+    }
+    async publicProfile(id) {
+        const usuario = await this.findOneById(id);
+        if (!usuario || usuario.deletedAt) {
+            throw new common_1.NotFoundException('Usuario no encontrado');
+        }
+        const [eventos, seguidores] = await Promise.all([
+            this.eventosRepo.find({
+                where: { creadoPor: id, estado: 'aprobado' },
+                order: { fechaInicio: 'DESC' },
+                take: 50,
+            }),
+            this.seguidoresRepo.count({ where: { seguidoUsuarioId: id } }),
+        ]);
+        return { ...(0, utils_js_1.withoutPassword)(usuario), eventos, seguidores };
+    }
 };
 exports.UsuariosService = UsuariosService;
 exports.UsuariosService = UsuariosService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(usuario_entity_js_1.Usuario)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(evento_entity_js_1.Evento)),
+    __param(2, (0, typeorm_1.InjectRepository)(seguidor_entity_js_1.Seguidor)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
+        typeorm_2.Repository])
 ], UsuariosService);
 //# sourceMappingURL=usuarios.service.js.map

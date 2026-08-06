@@ -1,0 +1,261 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Ip,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { AdminService } from './admin.service.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { CambiarEstadoDto } from './dto/cambiar-estado.dto.js';
+import { RechazarEventoDto } from './dto/rechazar-evento.dto.js';
+import { ModerarResenaDto } from '../resenas/dto/moderar-resena.dto.js';
+import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
+import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto.js';
+import { CrearOrganizacionDto } from './dto/crear-organizacion.dto.js';
+import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto.js';
+import { CreateEventoDto } from '../eventos/dto/create-evento.dto.js';
+import { UpdateEventoDto } from '../eventos/dto/update-evento.dto.js';
+import { OrganizacionesService } from '../organizaciones/organizaciones.service.js';
+
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('admin')
+@Controller('admin')
+export class AdminController {
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly organizacionesService: OrganizacionesService,
+  ) {}
+
+  private ctx(user: { id: string; rol: string }, ip: string) {
+    return { userId: user.id, rol: user.rol, ip };
+  }
+
+  @Get('estadisticas')
+  estadisticas() {
+    return this.adminService.estadisticas();
+  }
+
+  @Get('usuarios')
+  listUsuarios() {
+    return this.adminService.listUsuarios();
+  }
+
+  @Get('usuarios/:id')
+  detalleUsuario(@Param('id') id: string) {
+    return this.adminService.detalleUsuario(id);
+  }
+
+  @Post('usuarios')
+  crearUsuario(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Body() dto: CrearUsuarioDto,
+  ) {
+    return this.adminService.crearUsuario(dto, this.ctx(user, ip));
+  }
+
+  @Put('usuarios/:id')
+  actualizarUsuario(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: ActualizarUsuarioDto,
+  ) {
+    return this.adminService.actualizarUsuario(id, dto, this.ctx(user, ip));
+  }
+
+  @Delete('usuarios/:id')
+  eliminarUsuario(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.eliminarUsuario(id, this.ctx(user, ip));
+  }
+
+  @Put('usuarios/:id/estado')
+  setEstadoUsuario(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: CambiarEstadoDto,
+  ) {
+    return this.adminService.setEstadoUsuario(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('organizaciones')
+  listOrganizaciones() {
+    return this.adminService.listOrganizaciones();
+  }
+
+  @Get('organizaciones/:id')
+  detalleOrganizacion(@Param('id') id: string) {
+    return this.adminService.detalleOrganizacion(id);
+  }
+
+  @Post('organizaciones')
+  crearOrganizacion(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Body() dto: CrearOrganizacionDto,
+  ) {
+    return this.adminService.crearOrganizacion(dto, this.ctx(user, ip));
+  }
+
+  @Put('organizaciones/:id')
+  actualizarOrganizacion(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: ActualizarOrganizacionDto,
+  ) {
+    return this.adminService.actualizarOrganizacion(
+      id,
+      dto,
+      this.ctx(user, ip),
+    );
+  }
+
+  @Delete('organizaciones/:id')
+  eliminarOrganizacion(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.eliminarOrganizacion(id, this.ctx(user, ip));
+  }
+
+  @Put('organizaciones/:id/estado')
+  setEstadoOrganizacion(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: CambiarEstadoDto,
+  ) {
+    return this.adminService.setEstadoOrganizacion(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('eventos')
+  listEventos(@Query('estado') estado?: string) {
+    return this.adminService.listEventos(estado);
+  }
+
+  @Get('eventos/:id')
+  detalleEvento(@Param('id') id: string) {
+    return this.adminService.detalleEvento(id);
+  }
+
+  @Post('eventos')
+  crearEvento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Body() dto: CreateEventoDto,
+  ) {
+    return this.adminService.crearEvento(dto, this.ctx(user, ip));
+  }
+
+  @Put('eventos/:id')
+  actualizarEvento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateEventoDto,
+  ) {
+    return this.adminService.actualizarEvento(id, dto, this.ctx(user, ip));
+  }
+
+  @Delete('eventos/:id')
+  eliminarEvento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.eliminarEvento(id, this.ctx(user, ip));
+  }
+
+  @Put('eventos/:id/aprobar')
+  aprobarEvento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.aprobarEvento(id, this.ctx(user, ip));
+  }
+
+  @Put('eventos/:id/rechazar')
+  rechazarEvento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: RechazarEventoDto,
+  ) {
+    return this.adminService.rechazarEvento(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('establecimientos')
+  listEstablecimientos() {
+    return this.organizacionesService.listEstablecimientos();
+  }
+
+  @Put('establecimientos/:id/estado')
+  setEstadoEstablecimiento(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: CambiarEstadoDto,
+  ) {
+    return this.adminService.setEstadoEstablecimiento(
+      id,
+      dto,
+      this.ctx(user, ip),
+    );
+  }
+
+  @Get('resenas')
+  listResenas(@Query('estado') estado?: string) {
+    return this.adminService.listResenas(estado);
+  }
+
+  @Put('resenas/:id/estado')
+  moderarResena(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: ModerarResenaDto,
+  ) {
+    return this.adminService.moderarResena(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('ubicaciones')
+  listUbicaciones() {
+    return this.adminService.listUbicaciones();
+  }
+
+  @Get('reservas')
+  listReservas(@Query('estado') estado?: string) {
+    return this.adminService.listReservas(estado);
+  }
+
+  @Put('reservas/:id/verificar')
+  verificarReserva(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.verificarReserva(id, this.ctx(user, ip));
+  }
+
+  @Get('bitacora')
+  listBitacora(@Query('tablaAfectada') tablaAfectada?: string) {
+    return this.adminService.listBitacora(tablaAfectada);
+  }
+}

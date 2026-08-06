@@ -47,6 +47,7 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const bcrypt = __importStar(require("bcrypt"));
 const usuarios_service_js_1 = require("../usuarios/usuarios.service.js");
+const utils_js_1 = require("../common/utils.js");
 let AuthService = class AuthService {
     usuariosService;
     jwtService;
@@ -85,6 +86,9 @@ let AuthService = class AuthService {
         if (usuario.deletedAt) {
             throw new common_1.UnauthorizedException('Cuenta desactivada');
         }
+        if (usuario.estado === 'suspendido') {
+            throw new common_1.UnauthorizedException('Cuenta suspendida');
+        }
         const passwordValid = await bcrypt.compare(dto.password, usuario.passwordHash);
         if (!passwordValid) {
             throw new common_1.UnauthorizedException('Credenciales incorrectas');
@@ -99,6 +103,13 @@ let AuthService = class AuthService {
                 rol: usuario.rol,
             },
         };
+    }
+    async getProfile(id) {
+        const usuario = await this.usuariosService.findOneById(id);
+        if (!usuario) {
+            throw new common_1.UnauthorizedException('Usuario no encontrado');
+        }
+        return (0, utils_js_1.withoutPassword)(usuario);
     }
     generateToken(usuario) {
         const payload = { sub: usuario.id, email: usuario.email, rol: usuario.rol };

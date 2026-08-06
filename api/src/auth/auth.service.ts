@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsuariosService } from '../usuarios/usuarios.service.js';
+import { withoutPassword } from '../common/utils.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 
@@ -54,6 +55,10 @@ export class AuthService {
       throw new UnauthorizedException('Cuenta desactivada');
     }
 
+    if (usuario.estado === 'suspendido') {
+      throw new UnauthorizedException('Cuenta suspendida');
+    }
+
     const passwordValid = await bcrypt.compare(
       dto.password,
       usuario.passwordHash,
@@ -73,6 +78,14 @@ export class AuthService {
         rol: usuario.rol,
       },
     };
+  }
+
+  async getProfile(id: string) {
+    const usuario = await this.usuariosService.findOneById(id);
+    if (!usuario) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+    return withoutPassword(usuario);
   }
 
   private generateToken(usuario: {

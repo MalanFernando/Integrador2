@@ -1,0 +1,23 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/categorias/page": "app/admin/categorias/page.js",
+  "/admin/dashboard/page": "app/admin/dashboard/page.js",
+  "/admin/establecimientos/page": "app/admin/establecimientos/page.js",
+  "/admin/eventos/page": "app/admin/eventos/page.js",
+  "/admin/organizaciones/page": "app/admin/organizaciones/page.js",
+  "/admin/registro/page": "app/admin/registro/page.js",
+  "/admin/reportes/page": "app/admin/reportes/page.js",
+  "/admin/resenas/page": "app/admin/resenas/page.js",
+  "/admin/usuarios/page": "app/admin/usuarios/page.js",
+  "/eventos/[id]/page": "app/eventos/[id]/page.js",
+  "/eventos/page": "app/eventos/page.js",
+  "/favoritos/page": "app/favoritos/page.js",
+  "/login/page": "app/login/page.js",
+  "/mapa/page": "app/mapa/page.js",
+  "/mis-reservas/page": "app/mis-reservas/page.js",
+  "/organizaciones/[id]/page": "app/organizaciones/[id]/page.js",
+  "/page": "app/page.js",
+  "/perfil/page": "app/perfil/page.js",
+  "/register/page": "app/register/page.js"
+}

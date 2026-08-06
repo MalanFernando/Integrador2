@@ -1,77 +1,62 @@
 # AGENTS.md — Hasta la Vuelta (Farrapp)
 
-## Project layout
+## Estado del proyecto
 
-```
-hastaLaVuelta/
-├── schema.sql          # PostgreSQL + PostGIS schema (source of truth for DB)
-├── README.md           # Full architecture & ERD documentation
-├── api/                # NestJS 11 backend (all commands run from here)
-│   ├── src/
-│   │   ├── main.ts              # Bootstrap, global prefix /api, CORS
-│   │   ├── app.module.ts        # TypeORM + ConfigModule + feature modules
-│   │   ├── config/configuration.ts
-│   │   ├── auth/                # Auth module (register, login, JWT)
-│   │   ├── usuarios/            # Usuarios module (entity, service, controller)
-│   │   └── common/              # Global filter + interceptor
-│   ├── .env                     # DB + JWT config (not committed)
-│   └── dist/                    # Build output
-```
+**Read `ESTADO.md` (repo root) first** — it holds the current state ("Punto final actual"), what's done, and what's pending. Start work from there and update it when you finish something. Do **not** rescan the whole project each session.
 
-## Commands
+## Package manager
 
-All commands must be run from `api/`:
+**pnpm is the only package manager** across the project: `api/`, `frontend/` and `frontend/admin/` all use `pnpm` (`pnpm-lock.yaml` + `pnpm-workspace.yaml` each). Do **not** use npm/yarn in these folders. `reportes/` is ASP.NET (no JS tooling).
 
-```bash
-npm run build          # Type-check + compile (use this to verify changes)
-npm run start:dev      # Dev server with watch
-npm run lint           # ESLint + Prettier fix
-npm run test           # Jest unit tests
-npm run test:e2e       # Jest e2e tests
-```
+## Commands (run from `api/`)
 
-Verify with: `npm run build` — no other typecheck command exists.
+`pnpm run build` — type-check + compile (primary verification; no separate typecheck command)
+`pnpm run format` — Prettier on `src/` and `test/`
+`pnpm run lint` — ESLint + Prettier fix (config: `eslint.config.mjs`)
+`pnpm run test` — Jest unit tests (`*.spec.ts` under `src/`)
+`pnpm run test:e2e` — Jest e2e tests (config: `test/jest-e2e.json`)
+`pnpm run start:dev` — dev server with watch
 
-## TypeScript quirks (NestJS 11)
+## Commands (run from `frontend/admin/`)
 
-- **Module resolution is `nodenext`**, not `node`. All relative imports MUST use `.js` extensions:
-  ```ts
-  import { AuthService } from './auth.service.js';  // correct
-  import { AuthService } from './auth.service';      // WRONG — will fail to compile
-  ```
-- `bigint` columns map to `string` in TypeORM/JS (e.g., `usuario.id` is `string`, not `number`).
-- `@nestjs/jwt` v11 uses branded `StringValue` for `expiresIn`. Pass a number (seconds) instead of a string:
-  ```ts
-  signOptions: { expiresIn: 86400 }  // correct
-  signOptions: { expiresIn: '24h' }  // TS error
-  ```
+`pnpm run typecheck` — TypeScript check (`tsc --noEmit`)
+`pnpm run lint` — ESLint (config: eslint.config.mjs; `@next/next/no-img-element` warnings preexistentes, no errores)
+`pnpm run build` — Next.js build (compila + typecheck)
+`pnpm run dev` — dev server on port 3002
+
+## TypeScript quirks (nodenext + NestJS 11)
+
+- Relative imports **must** use `.js` extension: `import { X } from './x.js'` (not `'./x'`)
+- `noImplicitAny: false` — you *can* omit types; don't rely on it
+- `bigint` columns → `string` in TypeORM/JS (e.g. `usuario.id` is `string`, not `number`)
+- `@nestjs/jwt` v11: `signOptions.expiresIn` must be a **number** (seconds): `{ expiresIn: 86400 }` ✅
 
 ## Database
 
-- **Schema source of truth:** `schema.sql` at repo root. Run it against PostgreSQL 15+ with PostGIS extension.
-- `synchronize: false` in TypeORM config — schema changes go through `schema.sql`, not auto-sync.
-- Enums are PostgreSQL `CREATE TYPE` — not inline in table definitions. When adding new enum columns, add the TYPE first.
-- Triggers handle `updated_at` automatically on 8 tables. Do NOT set `updatedAt` manually.
-- Trigger `check_max_establecimientos` enforces max 3 active establishments per org at DB level.
+- **Schema source of truth:** `schema.sql` at repo root (PostgreSQL 15+ / PostGIS)
+- `synchronize: false` — schema changes go through `schema.sql` only
+- Enums are `CREATE TYPE` — add the TYPE before referencing in column definitions
+- `updated_at` triggers on 8 tables (usuarios, organizaciones, miembros_organizacion, establecimientos, eventos, localidades, reservas, resenas) — do **not** set manually
+- Trigger `check_max_establecimientos` enforces max 3 approved establishments per org
 
 ## API conventions
 
-- Global prefix: all routes are under `/api/` (set in `main.ts`).
-- `ValidationPipe` with `whitelist: true` and `forbidNonWhitelisted: true` — unknown properties in DTOs are stripped/rejected.
-- All responses wrapped by `TransformInterceptor` → `{ success: true, data, message }`.
-- Errors wrapped by `HttpExceptionFilter` → `{ success: false, statusCode, message, timestamp }`.
-- Auth: `POST /api/auth/register` and `POST /api/auth/login` return `{ access_token, user }`.
-- Protected routes use `@UseGuards(JwtAuthGuard)`. Role-based: `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('admin')`.
-- Entity names in schema use Spanish: `usuarios`, `organizaciones`, `eventos`, etc. Keep consistent.
+- Global prefix: `/api/` (set in `main.ts`)
+- `ValidationPipe` with `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
+- Success responses wrapped by global `TransformInterceptor` → `{ success: true, data, message: 'OK' }`
+- Errors wrapped by global `HttpExceptionFilter` → `{ success: false, statusCode, message, timestamp }`
+- Auth: `POST /api/auth/register` and `POST /api/auth/login` return `{ access_token, user }` (inside `data` above)
+- Guard: `@UseGuards(JwtAuthGuard)` for auth; `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('admin')` for RBAC
+- Entity names are Spanish: `usuarios`, `organizaciones`, `eventos`, etc.
 
 ## Entity registration
 
-New TypeORM entities must be added to the `entities` array in `app.module.ts` TypeORM config, or use `forFeature()` in their module and register via `TypeOrmModule.forFeature([...])`.
+New TypeORM entities: register via `TypeOrmModule.forFeature([EntityClass])` in their feature module.
 
 ## Environment
 
-Copy `.env.example` → `.env` (or create manually). Required vars:
+File: `api/.env` (already exists, no `.env.example`). Variables:
 - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
-- `JWT_SECRET` (change before production)
+- `JWT_SECRET`
 - `PORT` (default 3000)
 - `FRONTEND_URL` (CORS origin, default `http://localhost:3001`)

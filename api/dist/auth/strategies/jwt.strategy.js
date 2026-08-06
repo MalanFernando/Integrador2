@@ -34,6 +34,9 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
         if (!usuario || usuario.deletedAt) {
             throw new common_1.UnauthorizedException('Token inválido o usuario inactivo');
         }
+        if (usuario.estado === 'suspendido') {
+            throw new common_1.UnauthorizedException('Cuenta suspendida');
+        }
         return { id: usuario.id, email: usuario.email, rol: usuario.rol };
     }
 };

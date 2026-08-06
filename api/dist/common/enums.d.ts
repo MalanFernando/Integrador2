@@ -1,0 +1,17 @@
+export declare const ROL_USUARIO_ENUM: readonly ["admin", "organizador", "artista", "usuario"];
+export type RolUsuario = (typeof ROL_USUARIO_ENUM)[number];
+export declare const ESTADO_USUARIO_ENUM: readonly ["activo", "suspendido", "pendiente"];
+export type EstadoUsuario = (typeof ESTADO_USUARIO_ENUM)[number];
+export declare const ROL_ORGANIZACION_ENUM: readonly ["propietario", "editor", "visor"];
+export type RolOrganizacion = (typeof ROL_ORGANIZACION_ENUM)[number];
+export declare const ESTADO_ORGANIZACION_ENUM: readonly ["activo", "suspendido"];
+export declare const ESTADO_MIEMBRO_ENUM: readonly ["activo", "inactivo"];
+export declare const ESTADO_ESTABLECIMIENTO_ENUM: readonly ["pendiente", "aprobado", "rechazado", "suspendido"];
+export type EstadoEstablecimiento = (typeof ESTADO_ESTABLECIMIENTO_ENUM)[number];
+export declare const TIPO_CATEGORIA_ENUM: readonly ["evento", "establecimiento"];
+export declare const ESTADO_EVENTO_ENUM: readonly ["borrador", "pendiente", "aprobado", "rechazado", "cancelado", "finalizado"];
+export type EstadoEvento = (typeof ESTADO_EVENTO_ENUM)[number];
+export declare const ESTADO_LOCALIDAD_ENUM: readonly ["disponible", "agotado"];
+export declare const ESTADO_RESERVA_ENUM: readonly ["confirmada", "verificada", "cancelada"];
+export declare const ESTADO_RESENA_ENUM: readonly ["visible", "reportada", "oculta"];
+export declare const TIPO_SEGUIDO_ENUM: readonly ["usuario", "organizacion"];
