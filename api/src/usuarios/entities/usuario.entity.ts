@@ -1,8 +1,10 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -17,8 +19,11 @@ export class Usuario {
   @Column({ name: 'password_hash', length: 255 })
   passwordHash: string;
 
-  @Column({ name: 'nombre_completo', length: 150 })
-  nombreCompleto: string;
+  @Column({ length: 150 })
+  nombre: string;
+
+  @Column({ length: 150 })
+  apellido: string;
 
   @Column({ length: 20, nullable: true })
   telefono: string;
@@ -26,11 +31,20 @@ export class Usuario {
   @Column({ name: 'foto_perfil_url', type: 'text', nullable: true })
   fotoPerfilUrl: string;
 
+  @Column({ name: 'foto_portada', type: 'text', nullable: true })
+  fotoPortada: string;
+
   @Column({ type: 'text', nullable: true })
   biografia: string;
 
+  @Column({ length: 150, nullable: true })
+  etiqueta: string;
+
   @Column({ name: 'redes_sociales', type: 'jsonb', default: () => "'{}'" })
   redesSociales: Record<string, unknown>;
+
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  ubicacion: Record<string, unknown> | null;
 
   @Column({
     type: 'enum',

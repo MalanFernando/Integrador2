@@ -20,7 +20,12 @@ export class CrearUsuarioDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(150)
-  nombreCompleto: string;
+  nombre: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  apellido: string;
 
   @IsOptional()
   @IsString()

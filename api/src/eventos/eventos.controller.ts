@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { EventosService } from './eventos.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { CreateEventoDto } from './dto/create-evento.dto.js';
 import { UpdateEventoDto } from './dto/update-evento.dto.js';
@@ -34,17 +36,8 @@ export class EventosController {
     @Query('limit') limit?: string,
   ) {
     return this.eventosService.search({
-      estado,
-      categoriaId,
-      q,
-      fechaDesde,
-      fechaHasta,
-      precioMax,
-      lat,
-      lng,
-      radioKm,
-      page,
-      limit,
+      estado, categoriaId, q, fechaDesde, fechaHasta,
+      precioMax, lat, lng, radioKm, page, limit,
     });
   }
 
@@ -59,9 +52,13 @@ export class EventosController {
     return this.eventosService.detail(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'admin')
   @Post()
-  create(@CurrentUser() user: { id: string }, @Body() dto: CreateEventoDto) {
+  create(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreateEventoDto,
+  ) {
     return this.eventosService.create(user.id, dto);
   }
 

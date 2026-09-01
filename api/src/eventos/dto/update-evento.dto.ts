@@ -1,8 +1,10 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -10,13 +12,14 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { LocalidadInputDto, ArtistaInputDto } from './create-evento.dto.js';
+import {
+  LocalidadDto,
+  CarteleraArtistaDto,
+  InformacionPagoDto,
+  PreguntaFrecuenteDto,
+} from './create-evento.dto.js';
 
 export class UpdateEventoDto {
-  @IsOptional()
-  @IsString()
-  establecimientoId?: string;
-
   @IsOptional()
   @IsInt()
   categoriaId?: number;
@@ -47,16 +50,22 @@ export class UpdateEventoDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  capacidadTotal?: number;
-
-  @IsOptional()
-  @IsString()
-  imagenPrincipalUrl?: string;
+  aforo?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  galeriaImagenes?: string[];
+  imagenes?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  online?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CarteleraArtistaDto)
+  usuariosCartelera?: CarteleraArtistaDto[];
 
   @IsOptional()
   @IsString()
@@ -70,26 +79,23 @@ export class UpdateEventoDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
-  presentadoPor?: string;
-
-  @IsOptional()
-  @IsArray()
-  preguntasFrecuentes?: Record<string, unknown>[];
-
-  @IsOptional()
-  @IsString()
-  avisoAsistentes?: string;
+  visibilidad?: string;
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => LocalidadInputDto)
-  localidades?: LocalidadInputDto[];
+  @Type(() => LocalidadDto)
+  localidades?: LocalidadDto[];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => InformacionPagoDto)
+  informacionPago?: InformacionPagoDto;
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ArtistaInputDto)
-  artistas?: ArtistaInputDto[];
+  @Type(() => PreguntaFrecuenteDto)
+  preguntasFrecuentes?: PreguntaFrecuenteDto[];
 }

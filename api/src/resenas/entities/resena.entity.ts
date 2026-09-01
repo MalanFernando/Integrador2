@@ -8,9 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
-import { Organizacion } from '../../organizaciones/entities/organizacion.entity.js';
 import { Evento } from '../../eventos/entities/evento.entity.js';
-import { Establecimiento } from '../../organizaciones/entities/establecimiento.entity.js';
 
 @Entity('resenas')
 export class Resena {
@@ -24,26 +22,12 @@ export class Resena {
   @JoinColumn({ name: 'autor_id' })
   autor: Usuario;
 
-  @Column({ name: 'organizacion_id' })
-  organizacionId: string;
-
-  @ManyToOne(() => Organizacion)
-  @JoinColumn({ name: 'organizacion_id' })
-  organizacion: Organizacion;
-
-  @Column({ name: 'evento_id', type: 'bigint', nullable: true })
-  eventoId: string | null;
+  @Column({ name: 'evento_id' })
+  eventoId: string;
 
   @ManyToOne(() => Evento)
   @JoinColumn({ name: 'evento_id' })
-  evento: Evento | null;
-
-  @Column({ name: 'establecimiento_id', type: 'bigint', nullable: true })
-  establecimientoId: string | null;
-
-  @ManyToOne(() => Establecimiento)
-  @JoinColumn({ name: 'establecimiento_id' })
-  establecimiento: Establecimiento | null;
+  evento: Evento;
 
   @Column({ type: 'int' })
   puntuacion: number;

@@ -10,12 +10,9 @@ import { withoutPassword } from '../common/utils.js';
 @Injectable()
 export class UsuariosService {
   constructor(
-    @InjectRepository(Usuario)
-    private readonly usuariosRepo: Repository<Usuario>,
-    @InjectRepository(Evento)
-    private readonly eventosRepo: Repository<Evento>,
-    @InjectRepository(Seguidor)
-    private readonly seguidoresRepo: Repository<Seguidor>,
+    @InjectRepository(Usuario) private readonly usuariosRepo: Repository<Usuario>,
+    @InjectRepository(Evento) private readonly eventosRepo: Repository<Evento>,
+    @InjectRepository(Seguidor) private readonly seguidoresRepo: Repository<Seguidor>,
   ) {}
 
   async findByEmail(email: string): Promise<Usuario | null> {
@@ -29,13 +26,15 @@ export class UsuariosService {
   async create(data: {
     email: string;
     passwordHash: string;
-    nombreCompleto: string;
+    nombre: string;
+    apellido: string;
     telefono?: string;
   }): Promise<Usuario> {
     const usuario = this.usuariosRepo.create({
       email: data.email,
       passwordHash: data.passwordHash,
-      nombreCompleto: data.nombreCompleto,
+      nombre: data.nombre,
+      apellido: data.apellido,
       telefono: data.telefono,
     });
     return this.usuariosRepo.save(usuario);
@@ -43,28 +42,22 @@ export class UsuariosService {
 
   async updateProfile(id: string, dto: UpdateUsuarioDto) {
     const usuario = await this.findOneById(id);
-    if (!usuario || usuario.deletedAt) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
+    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
     Object.assign(usuario, dto);
     return this.usuariosRepo.save(usuario);
   }
 
   async publicProfile(id: string) {
     const usuario = await this.findOneById(id);
-    if (!usuario || usuario.deletedAt) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
-
+    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
     const [eventos, seguidores] = await Promise.all([
       this.eventosRepo.find({
-        where: { creadoPor: id, estado: 'aprobado' },
+        where: { organizadorId: id, estado: 'aprobado' },
         order: { fechaInicio: 'DESC' },
         take: 50,
       }),
-      this.seguidoresRepo.count({ where: { seguidoUsuarioId: id } }),
+      this.seguidoresRepo.count({ where: { seguidoId: id } }),
     ]);
-
     return { ...withoutPassword(usuario), eventos, seguidores };
   }
 }

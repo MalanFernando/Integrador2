@@ -16,11 +16,4 @@ export class Categoria {
 
   @Column({ name: 'color_hex', length: 10, default: '#000000' })
   colorHex: string;
-
-  @Column({
-    type: 'enum',
-    enum: ['evento', 'establecimiento'],
-    default: 'evento',
-  })
-  tipo: string;
 }

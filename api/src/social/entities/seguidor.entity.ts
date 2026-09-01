@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
-import { Organizacion } from '../../organizaciones/entities/organizacion.entity.js';
 
 @Entity('seguidores')
 export class Seguidor {
@@ -21,26 +20,12 @@ export class Seguidor {
   @JoinColumn({ name: 'seguidor_id' })
   seguidor: Usuario;
 
-  @Column({ name: 'seguido_usuario_id', type: 'bigint', nullable: true })
-  seguidoUsuarioId: string | null;
+  @Column({ name: 'seguido_id' })
+  seguidoId: string;
 
   @ManyToOne(() => Usuario)
-  @JoinColumn({ name: 'seguido_usuario_id' })
-  seguidoUsuario: Usuario | null;
-
-  @Column({ name: 'seguido_organizacion_id', type: 'bigint', nullable: true })
-  seguidoOrganizacionId: string | null;
-
-  @ManyToOne(() => Organizacion)
-  @JoinColumn({ name: 'seguido_organizacion_id' })
-  seguidoOrganizacion: Organizacion | null;
-
-  @Column({
-    name: 'tipo_seguido',
-    type: 'enum',
-    enum: ['usuario', 'organizacion'],
-  })
-  tipoSeguido: string;
+  @JoinColumn({ name: 'seguido_id' })
+  seguido: Usuario;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

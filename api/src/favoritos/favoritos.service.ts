@@ -15,9 +15,7 @@ export class FavoritosService {
     const existing = await this.favoritosRepo.findOne({
       where: { usuarioId: userId, eventoId: dto.eventoId },
     });
-    if (existing) {
-      return existing;
-    }
+    if (existing) return existing;
     return this.favoritosRepo.save(
       this.favoritosRepo.create({ usuarioId: userId, eventoId: dto.eventoId }),
     );
@@ -26,7 +24,7 @@ export class FavoritosService {
   async list(userId: string) {
     return this.favoritosRepo.find({
       where: { usuarioId: userId },
-      relations: { evento: { organizacion: true, categoria: true } },
+      relations: { evento: { categoria: true } },
       order: { createdAt: 'DESC' },
     });
   }
@@ -35,9 +33,7 @@ export class FavoritosService {
     const favorito = await this.favoritosRepo.findOne({
       where: { usuarioId: userId, eventoId },
     });
-    if (!favorito) {
-      throw new NotFoundException('Favorito no encontrado');
-    }
+    if (!favorito) throw new NotFoundException('Favorito no encontrado');
     await this.favoritosRepo.remove(favorito);
     return { message: 'Favorito eliminado' };
   }

@@ -19,69 +19,38 @@ export class SocialService {
   ) {}
 
   async seguir(userId: string, dto: SeguirDto) {
-    if (userId === dto.seguidoId && dto.tipo === 'usuario') {
+    if (userId === dto.seguidoId) {
       throw new BadRequestException('No puedes seguirte a ti mismo');
     }
 
-    if (dto.tipo === 'usuario') {
-      const existing = await this.seguidoresRepo.findOne({
-        where: { seguidorId: userId, seguidoUsuarioId: dto.seguidoId },
-      });
-      if (existing) {
-        throw new BadRequestException('Ya sigues a este usuario');
-      }
-      return this.seguidoresRepo.save(
-        this.seguidoresRepo.create({
-          seguidorId: userId,
-          seguidoUsuarioId: dto.seguidoId,
-          seguidoOrganizacionId: null,
-          tipoSeguido: 'usuario',
-        }),
-      );
-    }
-
     const existing = await this.seguidoresRepo.findOne({
-      where: { seguidorId: userId, seguidoOrganizacionId: dto.seguidoId },
+      where: { seguidorId: userId, seguidoId: dto.seguidoId },
     });
-    if (existing) {
-      throw new BadRequestException('Ya sigues a esta organización');
-    }
+    if (existing) throw new BadRequestException('Ya sigues a este usuario');
+
     return this.seguidoresRepo.save(
       this.seguidoresRepo.create({
         seguidorId: userId,
-        seguidoUsuarioId: null,
-        seguidoOrganizacionId: dto.seguidoId,
-        tipoSeguido: 'organizacion',
+        seguidoId: dto.seguidoId,
       }),
     );
   }
 
-  async dejarDeSeguir(userId: string, tipo: string, seguidoId: string) {
-    const where =
-      tipo === 'usuario'
-        ? { seguidorId: userId, seguidoUsuarioId: seguidoId }
-        : { seguidorId: userId, seguidoOrganizacionId: seguidoId };
-
-    const seguidor = await this.seguidoresRepo.findOne({ where });
-    if (!seguidor) {
-      throw new NotFoundException('No se encontró el seguimiento');
-    }
+  async dejarDeSeguir(userId: string, seguidoId: string) {
+    const seguidor = await this.seguidoresRepo.findOne({
+      where: { seguidorId: userId, seguidoId },
+    });
+    if (!seguidor) throw new NotFoundException('No se encontró el seguimiento');
     await this.seguidoresRepo.remove(seguidor);
     return { message: 'Ya no sigues este perfil' };
   }
 
-  async seguidores(tipo: string, seguidoId: string) {
-    const where =
-      tipo === 'usuario'
-        ? { seguidoUsuarioId: seguidoId }
-        : { seguidoOrganizacionId: seguidoId };
-
+  async seguidores(seguidoId: string) {
     const seguidores = await this.seguidoresRepo.find({
-      where,
+      where: { seguidoId },
       relations: { seguidor: true },
       order: { createdAt: 'DESC' },
     });
-
     return {
       total: seguidores.length,
       items: seguidores.map((s) => s.seguidor),
@@ -100,9 +69,7 @@ export class SocialService {
     const notificacion = await this.notificacionesRepo.findOne({
       where: { id, usuarioId: userId },
     });
-    if (!notificacion) {
-      throw new NotFoundException('Notificación no encontrada');
-    }
+    if (!notificacion) throw new NotFoundException('Notificación no encontrada');
     notificacion.leida = true;
     return this.notificacionesRepo.save(notificacion);
   }
@@ -134,25 +101,20 @@ export class SocialService {
     );
   }
 
-  async notificarFollowersOrganizacion(
-    orgId: string,
-    evento: { id: string; titulo: string },
-  ) {
+  async notificarFollowers(usuarioId: string, evento: { id: string; titulo: string }) {
     const seguidores = await this.seguidoresRepo.find({
-      where: { seguidoOrganizacionId: orgId },
+      where: { seguidoId: usuarioId },
     });
     const notifs = seguidores.map((s) =>
       this.notificacionesRepo.create({
         usuarioId: s.seguidorId,
         tipo: 'nuevo_evento',
         titulo: 'Nuevo evento aprobado',
-        mensaje: `La organización publicó "${evento.titulo}"`,
+        mensaje: `Se publicó "${evento.titulo}"`,
         datosJson: { eventoId: evento.id },
         leida: false,
       }),
     );
-    if (notifs.length > 0) {
-      await this.notificacionesRepo.save(notifs);
-    }
+    if (notifs.length > 0) await this.notificacionesRepo.save(notifs);
   }
 }

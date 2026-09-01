@@ -20,20 +20,14 @@ import { RechazarEventoDto } from './dto/rechazar-evento.dto.js';
 import { ModerarResenaDto } from '../resenas/dto/moderar-resena.dto.js';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto.js';
-import { CrearOrganizacionDto } from './dto/crear-organizacion.dto.js';
-import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto.js';
 import { CreateEventoDto } from '../eventos/dto/create-evento.dto.js';
 import { UpdateEventoDto } from '../eventos/dto/update-evento.dto.js';
-import { OrganizacionesService } from '../organizaciones/organizaciones.service.js';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
 @Controller('admin')
 export class AdminController {
-  constructor(
-    private readonly adminService: AdminService,
-    private readonly organizacionesService: OrganizacionesService,
-  ) {}
+  constructor(private readonly adminService: AdminService) {}
 
   private ctx(user: { id: string; rol: string }, ip: string) {
     return { userId: user.id, rol: user.rol, ip };
@@ -92,58 +86,6 @@ export class AdminController {
     return this.adminService.setEstadoUsuario(id, dto, this.ctx(user, ip));
   }
 
-  @Get('organizaciones')
-  listOrganizaciones() {
-    return this.adminService.listOrganizaciones();
-  }
-
-  @Get('organizaciones/:id')
-  detalleOrganizacion(@Param('id') id: string) {
-    return this.adminService.detalleOrganizacion(id);
-  }
-
-  @Post('organizaciones')
-  crearOrganizacion(
-    @CurrentUser() user: { id: string; rol: string },
-    @Ip() ip: string,
-    @Body() dto: CrearOrganizacionDto,
-  ) {
-    return this.adminService.crearOrganizacion(dto, this.ctx(user, ip));
-  }
-
-  @Put('organizaciones/:id')
-  actualizarOrganizacion(
-    @CurrentUser() user: { id: string; rol: string },
-    @Ip() ip: string,
-    @Param('id') id: string,
-    @Body() dto: ActualizarOrganizacionDto,
-  ) {
-    return this.adminService.actualizarOrganizacion(
-      id,
-      dto,
-      this.ctx(user, ip),
-    );
-  }
-
-  @Delete('organizaciones/:id')
-  eliminarOrganizacion(
-    @CurrentUser() user: { id: string; rol: string },
-    @Ip() ip: string,
-    @Param('id') id: string,
-  ) {
-    return this.adminService.eliminarOrganizacion(id, this.ctx(user, ip));
-  }
-
-  @Put('organizaciones/:id/estado')
-  setEstadoOrganizacion(
-    @CurrentUser() user: { id: string; rol: string },
-    @Ip() ip: string,
-    @Param('id') id: string,
-    @Body() dto: CambiarEstadoDto,
-  ) {
-    return this.adminService.setEstadoOrganizacion(id, dto, this.ctx(user, ip));
-  }
-
   @Get('eventos')
   listEventos(@Query('estado') estado?: string) {
     return this.adminService.listEventos(estado);
@@ -199,25 +141,6 @@ export class AdminController {
     @Body() dto: RechazarEventoDto,
   ) {
     return this.adminService.rechazarEvento(id, dto, this.ctx(user, ip));
-  }
-
-  @Get('establecimientos')
-  listEstablecimientos() {
-    return this.organizacionesService.listEstablecimientos();
-  }
-
-  @Put('establecimientos/:id/estado')
-  setEstadoEstablecimiento(
-    @CurrentUser() user: { id: string; rol: string },
-    @Ip() ip: string,
-    @Param('id') id: string,
-    @Body() dto: CambiarEstadoDto,
-  ) {
-    return this.adminService.setEstadoEstablecimiento(
-      id,
-      dto,
-      this.ctx(user, ip),
-    );
   }
 
   @Get('resenas')

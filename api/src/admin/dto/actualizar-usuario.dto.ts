@@ -21,7 +21,12 @@ export class ActualizarUsuarioDto {
   @IsOptional()
   @IsString()
   @MaxLength(150)
-  nombreCompleto?: string;
+  nombre?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  apellido?: string;
 
   @IsOptional()
   @IsString()

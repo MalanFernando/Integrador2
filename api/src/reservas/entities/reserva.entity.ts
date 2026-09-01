@@ -8,7 +8,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Evento } from '../../eventos/entities/evento.entity.js';
-import { Localidad } from '../../eventos/entities/localidad.entity.js';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
 
 @Entity('reservas')
@@ -23,19 +22,15 @@ export class Reserva {
   @JoinColumn({ name: 'evento_id' })
   evento: Evento;
 
-  @Column({ name: 'localidad_id' })
-  localidadId: string;
-
-  @ManyToOne(() => Localidad)
-  @JoinColumn({ name: 'localidad_id' })
-  localidad: Localidad;
-
   @Column({ name: 'usuario_id' })
   usuarioId: string;
 
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario;
+
+  @Column({ name: 'localidad_nombre', length: 100 })
+  localidadNombre: string;
 
   @Column({ name: 'cantidad_tickets', type: 'int', default: 1 })
   cantidadTickets: number;

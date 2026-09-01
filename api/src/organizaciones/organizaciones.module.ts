@@ -1,19 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Organizacion } from './entities/organizacion.entity.js';
 import { MiembroOrganizacion } from './entities/miembro-organizacion.entity.js';
-import { Establecimiento } from './entities/establecimiento.entity.js';
+import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { OrganizacionesService } from './organizaciones.service.js';
 import { OrganizacionesController } from './organizaciones.controller.js';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      Organizacion,
-      MiembroOrganizacion,
-      Establecimiento,
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([MiembroOrganizacion, Usuario])],
   controllers: [OrganizacionesController],
   providers: [OrganizacionesService],
   exports: [OrganizacionesService],

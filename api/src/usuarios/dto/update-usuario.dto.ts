@@ -4,7 +4,12 @@ export class UpdateUsuarioDto {
   @IsOptional()
   @IsString()
   @MaxLength(150)
-  nombreCompleto?: string;
+  nombre?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  apellido?: string;
 
   @IsOptional()
   @IsString()
@@ -17,9 +22,22 @@ export class UpdateUsuarioDto {
 
   @IsOptional()
   @IsString()
+  fotoPortada?: string;
+
+  @IsOptional()
+  @IsString()
   biografia?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  etiqueta?: string;
 
   @IsOptional()
   @IsObject()
   redesSociales?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  ubicacion?: Record<string, unknown>;
 }

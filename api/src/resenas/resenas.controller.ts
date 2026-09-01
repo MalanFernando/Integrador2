@@ -9,11 +9,8 @@ export class ResenasController {
   constructor(private readonly resenasService: ResenasService) {}
 
   @Get()
-  list(
-    @Query('eventoId') eventoId?: string,
-    @Query('organizacionId') organizacionId?: string,
-  ) {
-    return this.resenasService.list({ eventoId, organizacionId });
+  list(@Query('eventoId') eventoId?: string) {
+    return this.resenasService.list({ eventoId });
   }
 
   @UseGuards(JwtAuthGuard)

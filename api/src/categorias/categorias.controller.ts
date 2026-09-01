@@ -7,7 +7,6 @@ import {
   ParseIntPipe,
   Post,
   Put,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CategoriasService } from './categorias.service.js';
@@ -22,8 +21,8 @@ export class CategoriasController {
   constructor(private readonly categoriasService: CategoriasService) {}
 
   @Get()
-  list(@Query('tipo') tipo?: string) {
-    return this.categoriasService.list(tipo);
+  list() {
+    return this.categoriasService.list();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,10 +35,7 @@ export class CategoriasController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   @Put(':id')
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateCategoriaDto,
-  ) {
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCategoriaDto) {
     return this.categoriasService.update(id, dto);
   }
 

@@ -24,21 +24,17 @@ export class SocialController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete('social/seguir/:tipo/:seguidoId')
+  @Delete('social/seguir/:seguidoId')
   dejarDeSeguir(
     @CurrentUser() user: { id: string },
-    @Param('tipo') tipo: string,
     @Param('seguidoId') seguidoId: string,
   ) {
-    return this.socialService.dejarDeSeguir(user.id, tipo, seguidoId);
+    return this.socialService.dejarDeSeguir(user.id, seguidoId);
   }
 
-  @Get('social/seguidores/:tipo/:seguidoId')
-  seguidores(
-    @Param('tipo') tipo: string,
-    @Param('seguidoId') seguidoId: string,
-  ) {
-    return this.socialService.seguidores(tipo, seguidoId);
+  @Get('social/seguidores/:seguidoId')
+  seguidores(@Param('seguidoId') seguidoId: string) {
+    return this.socialService.seguidores(seguidoId);
   }
 
   @UseGuards(JwtAuthGuard)

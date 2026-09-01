@@ -7,8 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Organizacion } from '../../organizaciones/entities/organizacion.entity.js';
-import { Establecimiento } from '../../organizaciones/entities/establecimiento.entity.js';
 import { Categoria } from '../../categorias/entities/categoria.entity.js';
 import { Ubicacion } from '../../geo/entities/ubicacion.entity.js';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
@@ -18,19 +16,12 @@ export class Evento {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ name: 'organizacion_id' })
-  organizacionId: string;
+  @Column({ name: 'organizador_id' })
+  organizadorId: string;
 
-  @ManyToOne(() => Organizacion)
-  @JoinColumn({ name: 'organizacion_id' })
-  organizacion: Organizacion;
-
-  @Column({ name: 'establecimiento_id', type: 'bigint', nullable: true })
-  establecimientoId: string | null;
-
-  @ManyToOne(() => Establecimiento)
-  @JoinColumn({ name: 'establecimiento_id' })
-  establecimiento: Establecimiento | null;
+  @ManyToOne(() => Usuario)
+  @JoinColumn({ name: 'organizador_id' })
+  organizador: Usuario;
 
   @Column({ name: 'categoria_id' })
   categoriaId: number;
@@ -65,14 +56,17 @@ export class Evento {
   @Column({ name: 'fecha_fin', type: 'timestamptz' })
   fechaFin: Date;
 
-  @Column({ name: 'capacidad_total', type: 'int', default: 100 })
-  capacidadTotal: number;
+  @Column({ type: 'int', default: 100 })
+  aforo: number;
 
-  @Column({ name: 'imagen_principal_url', type: 'text' })
-  imagenPrincipalUrl: string;
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  imagenes: string[];
 
-  @Column({ name: 'galeria_imagenes', type: 'jsonb', default: () => "'[]'" })
-  galeriaImagenes: string[];
+  @Column({ type: 'boolean', default: false })
+  online: boolean;
+
+  @Column({ name: 'usuarios_cartelera', type: 'jsonb', default: () => "'[]'" })
+  usuariosCartelera: Record<string, unknown>[];
 
   @Column({ name: 'restriccion_acceso', length: 100, default: 'Todo público' })
   restriccionAcceso: string;
@@ -81,33 +75,24 @@ export class Evento {
   etiquetas: string[];
 
   @Column({
-    name: 'presentado_por',
-    type: 'varchar',
-    length: 255,
-    nullable: true,
+    type: 'enum',
+    enum: ['publico', 'oculto', 'privado'],
+    default: 'publico',
   })
-  presentadoPor: string | null;
+  visibilidad: string;
 
-  @Column({
-    name: 'preguntas_frecuentes',
-    type: 'jsonb',
-    default: () => "'[]'",
-  })
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  localidades: Record<string, unknown>[];
+
+  @Column({ name: 'informacion_pago', type: 'jsonb', nullable: true, default: null })
+  informacionPago: Record<string, unknown> | null;
+
+  @Column({ name: 'preguntas_frecuentes', type: 'jsonb', default: () => "'[]'" })
   preguntasFrecuentes: Record<string, unknown>[];
-
-  @Column({ name: 'aviso_asistentes', type: 'text', nullable: true })
-  avisoAsistentes: string | null;
 
   @Column({
     type: 'enum',
-    enum: [
-      'borrador',
-      'pendiente',
-      'aprobado',
-      'rechazado',
-      'cancelado',
-      'finalizado',
-    ],
+    enum: ['borrador', 'pendiente', 'aprobado', 'rechazado', 'cancelado', 'finalizado'],
     default: 'borrador',
   })
   estado: string;

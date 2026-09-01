@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Organizacion } from './organizacion.entity.js';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
 
 @Entity('miembros_organizacion')
@@ -15,29 +14,39 @@ export class MiembroOrganizacion {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id: string;
 
-  @Column({ name: 'organizacion_id' })
-  organizacionId: string;
+  @Column({ name: 'organizador_id' })
+  organizadorId: string;
 
-  @ManyToOne(() => Organizacion)
-  @JoinColumn({ name: 'organizacion_id' })
-  organizacion: Organizacion;
+  @ManyToOne(() => Usuario)
+  @JoinColumn({ name: 'organizador_id' })
+  organizador: Usuario;
 
-  @Column({ name: 'usuario_id' })
-  usuarioId: string;
+  @Column({ name: 'usuario_id', type: 'bigint', nullable: true })
+  usuarioId: string | null;
 
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuario_id' })
-  usuario: Usuario;
+  usuario: Usuario | null;
+
+  @Column({ name: 'email_invitacion', length: 150, nullable: true })
+  emailInvitacion: string | null;
+
+  @Column({ name: 'nombre_invitado', length: 150, nullable: true })
+  nombreInvitado: string | null;
 
   @Column({
     name: 'rol_organizacion',
     type: 'enum',
-    enum: ['propietario', 'editor', 'visor'],
+    enum: ['editor', 'visor'],
     default: 'editor',
   })
   rolOrganizacion: string;
 
-  @Column({ type: 'enum', enum: ['activo', 'inactivo'], default: 'activo' })
+  @Column({
+    type: 'enum',
+    enum: ['activo', 'inactivo', 'pendiente'],
+    default: 'pendiente',
+  })
   estado: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

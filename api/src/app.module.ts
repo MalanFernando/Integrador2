@@ -19,13 +19,9 @@ import { Usuario } from './usuarios/entities/usuario.entity.js';
 import { Provincia } from './geo/entities/provincia.entity.js';
 import { Ciudad } from './geo/entities/ciudad.entity.js';
 import { Ubicacion } from './geo/entities/ubicacion.entity.js';
-import { Organizacion } from './organizaciones/entities/organizacion.entity.js';
 import { MiembroOrganizacion } from './organizaciones/entities/miembro-organizacion.entity.js';
-import { Establecimiento } from './organizaciones/entities/establecimiento.entity.js';
 import { Categoria } from './categorias/entities/categoria.entity.js';
 import { Evento } from './eventos/entities/evento.entity.js';
-import { EventoArtista } from './eventos/entities/evento-artista.entity.js';
-import { Localidad } from './eventos/entities/localidad.entity.js';
 import { Reserva } from './reservas/entities/reserva.entity.js';
 import { Resena } from './resenas/entities/resena.entity.js';
 import { Favorito } from './favoritos/entities/favorito.entity.js';
@@ -49,40 +45,18 @@ import { BitacoraAuditoria } from './auditoria/entities/bitacora.entity.js';
         password: configService.get<string>('DB_PASS'),
         database: configService.get<string>('DB_NAME'),
         entities: [
-          Usuario,
-          Provincia,
-          Ciudad,
-          Ubicacion,
-          Organizacion,
-          MiembroOrganizacion,
-          Establecimiento,
-          Categoria,
-          Evento,
-          EventoArtista,
-          Localidad,
-          Reserva,
-          Resena,
-          Favorito,
-          Seguidor,
-          Notificacion,
-          BitacoraAuditoria,
+          Usuario, Provincia, Ciudad, Ubicacion,
+          MiembroOrganizacion, Categoria, Evento,
+          Reserva, Resena, Favorito,
+          Seguidor, Notificacion, BitacoraAuditoria,
         ],
         synchronize: false,
       }),
       inject: [ConfigService],
     }),
-    AuthModule,
-    UsuariosModule,
-    GeoModule,
-    CategoriasModule,
-    OrganizacionesModule,
-    EventosModule,
-    ReservasModule,
-    ResenasModule,
-    FavoritosModule,
-    SocialModule,
-    AuditoriaModule,
-    AdminModule,
+    AuthModule, UsuariosModule, GeoModule, CategoriasModule,
+    OrganizacionesModule, EventosModule, ReservasModule, ResenasModule,
+    FavoritosModule, SocialModule, AuditoriaModule, AdminModule,
   ],
 })
 export class AppModule {}

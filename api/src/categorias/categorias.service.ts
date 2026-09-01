@@ -12,9 +12,8 @@ export class CategoriasService {
     private readonly categoriasRepo: Repository<Categoria>,
   ) {}
 
-  list(tipo?: string) {
-    const where = tipo ? { tipo } : {};
-    return this.categoriasRepo.find({ where, order: { nombre: 'ASC' } });
+  list() {
+    return this.categoriasRepo.find({ order: { nombre: 'ASC' } });
   }
 
   findOne(id: number) {
@@ -27,18 +26,14 @@ export class CategoriasService {
 
   async update(id: number, dto: UpdateCategoriaDto) {
     const categoria = await this.findOne(id);
-    if (!categoria) {
-      throw new NotFoundException('Categoría no encontrada');
-    }
+    if (!categoria) throw new NotFoundException('Categoría no encontrada');
     Object.assign(categoria, dto);
     return this.categoriasRepo.save(categoria);
   }
 
   async remove(id: number) {
     const categoria = await this.findOne(id);
-    if (!categoria) {
-      throw new NotFoundException('Categoría no encontrada');
-    }
+    if (!categoria) throw new NotFoundException('Categoría no encontrada');
     await this.categoriasRepo.remove(categoria);
     return { message: 'Categoría eliminada' };
   }

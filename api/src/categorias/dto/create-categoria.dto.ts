@@ -1,5 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-import { TIPO_CATEGORIA_ENUM } from '../../common/enums.js';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateCategoriaDto {
   @IsString()
@@ -18,7 +17,4 @@ export class CreateCategoriaDto {
   @IsString()
   @MaxLength(10)
   colorHex?: string;
-
-  @IsIn(TIPO_CATEGORIA_ENUM)
-  tipo: string;
 }

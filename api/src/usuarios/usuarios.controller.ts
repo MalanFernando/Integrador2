@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Put,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service.js';
 import { withoutPassword } from '../common/utils.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -35,9 +27,7 @@ export class UsuariosController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const usuario = await this.usuariosService.findOneById(id);
-    if (!usuario) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
     return withoutPassword(usuario);
   }
 }

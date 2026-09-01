@@ -1,9 +1,10 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsInt,
-  IsNumber,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -12,50 +13,64 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class LocalidadInputDto {
+export class LocalidadDto {
   @IsString()
   @MaxLength(100)
   nombre: string;
 
-  @IsOptional()
-  @IsString()
-  descripcion?: string;
-
-  @IsNumber({ maxDecimalPlaces: 2 })
-  precio: number;
-
   @IsInt()
   @Min(1)
-  capacidadTotal: number;
+  aforo: number;
+
+  @IsInt()
+  @Min(0)
+  precio: number;
 }
 
-export class ArtistaInputDto {
+export class CarteleraArtistaDto {
   @IsOptional()
   @IsString()
-  artistaId?: string;
-
-  @IsString()
-  @MinLength(1)
-  nombreArtista: string;
+  usuarioId?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(100)
-  rolEnEvento?: string;
+  nombre?: string;
 
   @IsOptional()
-  @IsInt()
-  orden?: number;
+  @IsString()
+  redSocial?: string;
+}
+
+export class InformacionPagoDto {
+  @IsString()
+  nombreDestinatario: string;
+
+  @IsString()
+  numeroContacto: string;
+
+  @IsString()
+  numeroCuenta: string;
+
+  @IsString()
+  tipoCuenta: string;
+
+  @IsString()
+  cedula: string;
+
+  @IsOptional()
+  @IsString()
+  fotoVerificacionUrl?: string;
+}
+
+export class PreguntaFrecuenteDto {
+  @IsString()
+  titulo: string;
+
+  @IsString()
+  respuesta: string;
 }
 
 export class CreateEventoDto {
-  @IsString()
-  organizacionId: string;
-
-  @IsOptional()
-  @IsString()
-  establecimientoId?: string;
-
   @IsInt()
   categoriaId: number;
 
@@ -80,15 +95,22 @@ export class CreateEventoDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  capacidadTotal?: number;
-
-  @IsString()
-  imagenPrincipalUrl: string;
+  aforo?: number;
 
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  galeriaImagenes?: string[];
+  imagenes?: string[];
+
+  @IsOptional()
+  @IsBoolean()
+  online?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CarteleraArtistaDto)
+  usuariosCartelera?: CarteleraArtistaDto[];
 
   @IsOptional()
   @IsString()
@@ -102,26 +124,23 @@ export class CreateEventoDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
-  presentadoPor?: string;
-
-  @IsOptional()
-  @IsArray()
-  preguntasFrecuentes?: Record<string, unknown>[];
-
-  @IsOptional()
-  @IsString()
-  avisoAsistentes?: string;
+  visibilidad?: string;
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => LocalidadInputDto)
-  localidades?: LocalidadInputDto[];
+  @Type(() => LocalidadDto)
+  localidades?: LocalidadDto[];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => InformacionPagoDto)
+  informacionPago?: InformacionPagoDto;
 
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => ArtistaInputDto)
-  artistas?: ArtistaInputDto[];
+  @Type(() => PreguntaFrecuenteDto)
+  preguntasFrecuentes?: PreguntaFrecuenteDto[];
 }

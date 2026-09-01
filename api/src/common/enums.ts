@@ -13,27 +13,15 @@ export const ESTADO_USUARIO_ENUM = [
 ] as const;
 export type EstadoUsuario = (typeof ESTADO_USUARIO_ENUM)[number];
 
-export const ROL_ORGANIZACION_ENUM = [
-  'propietario',
-  'editor',
-  'visor',
-] as const;
+export const ROL_ORGANIZACION_ENUM = ['editor', 'visor'] as const;
 export type RolOrganizacion = (typeof ROL_ORGANIZACION_ENUM)[number];
 
-export const ESTADO_ORGANIZACION_ENUM = ['activo', 'suspendido'] as const;
-
-export const ESTADO_MIEMBRO_ENUM = ['activo', 'inactivo'] as const;
-
-export const ESTADO_ESTABLECIMIENTO_ENUM = [
+export const ESTADO_MIEMBRO_ENUM = [
+  'activo',
+  'inactivo',
   'pendiente',
-  'aprobado',
-  'rechazado',
-  'suspendido',
 ] as const;
-export type EstadoEstablecimiento =
-  (typeof ESTADO_ESTABLECIMIENTO_ENUM)[number];
-
-export const TIPO_CATEGORIA_ENUM = ['evento', 'establecimiento'] as const;
+export type EstadoMiembro = (typeof ESTADO_MIEMBRO_ENUM)[number];
 
 export const ESTADO_EVENTO_ENUM = [
   'borrador',
@@ -45,7 +33,8 @@ export const ESTADO_EVENTO_ENUM = [
 ] as const;
 export type EstadoEvento = (typeof ESTADO_EVENTO_ENUM)[number];
 
-export const ESTADO_LOCALIDAD_ENUM = ['disponible', 'agotado'] as const;
+export const VISIBILIDAD_ENUM = ['publico', 'oculto', 'privado'] as const;
+export type Visibilidad = (typeof VISIBILIDAD_ENUM)[number];
 
 export const ESTADO_RESERVA_ENUM = [
   'confirmada',
@@ -55,4 +44,4 @@ export const ESTADO_RESERVA_ENUM = [
 
 export const ESTADO_RESENA_ENUM = ['visible', 'reportada', 'oculta'] as const;
 
-export const TIPO_SEGUIDO_ENUM = ['usuario', 'organizacion'] as const;
+export const TIPO_CUENTA_ENUM = ['ahorros', 'corriente'] as const;
