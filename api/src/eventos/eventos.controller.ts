@@ -36,8 +36,17 @@ export class EventosController {
     @Query('limit') limit?: string,
   ) {
     return this.eventosService.search({
-      estado, categoriaId, q, fechaDesde, fechaHasta,
-      precioMax, lat, lng, radioKm, page, limit,
+      estado,
+      categoriaId,
+      q,
+      fechaDesde,
+      fechaHasta,
+      precioMax,
+      lat,
+      lng,
+      radioKm,
+      page,
+      limit,
     });
   }
 
@@ -55,10 +64,7 @@ export class EventosController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('organizador', 'admin')
   @Post()
-  create(
-    @CurrentUser() user: { id: string },
-    @Body() dto: CreateEventoDto,
-  ) {
+  create(@CurrentUser() user: { id: string }, @Body() dto: CreateEventoDto) {
     return this.eventosService.create(user.id, dto);
   }
 

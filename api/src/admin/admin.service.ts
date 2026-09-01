@@ -55,16 +55,33 @@ export class AdminService {
   ) {}
 
   async estadisticas() {
-    const [usuarios, eventos, eventosAprobados, eventosPendientes, reservas, resenas] =
-      await Promise.all([
-        this.usuariosRepo.count({ where: { deletedAt: IsNull() } }),
-        this.eventosRepo.count({ where: { deletedAt: IsNull() } }),
-        this.eventosRepo.count({ where: { estado: 'aprobado', deletedAt: IsNull() } }),
-        this.eventosRepo.count({ where: { estado: 'pendiente', deletedAt: IsNull() } }),
-        this.reservasRepo.count(),
-        this.resenasRepo.count(),
-      ]);
-    return { usuarios, eventos, eventosAprobados, eventosPendientes, reservas, resenas };
+    const [
+      usuarios,
+      eventos,
+      eventosAprobados,
+      eventosPendientes,
+      reservas,
+      resenas,
+    ] = await Promise.all([
+      this.usuariosRepo.count({ where: { deletedAt: IsNull() } }),
+      this.eventosRepo.count({ where: { deletedAt: IsNull() } }),
+      this.eventosRepo.count({
+        where: { estado: 'aprobado', deletedAt: IsNull() },
+      }),
+      this.eventosRepo.count({
+        where: { estado: 'pendiente', deletedAt: IsNull() },
+      }),
+      this.reservasRepo.count(),
+      this.resenasRepo.count(),
+    ]);
+    return {
+      usuarios,
+      eventos,
+      eventosAprobados,
+      eventosPendientes,
+      reservas,
+      resenas,
+    };
   }
 
   async listUsuarios() {
@@ -78,12 +95,15 @@ export class AdminService {
 
   async detalleUsuario(id: string) {
     const usuario = await this.usuariosRepo.findOne({ where: { id } });
-    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
+    if (!usuario || usuario.deletedAt)
+      throw new NotFoundException('Usuario no encontrado');
     return withoutPassword(usuario);
   }
 
   async crearUsuario(dto: CrearUsuarioDto, ctx: AdminContext) {
-    const existente = await this.usuariosRepo.findOne({ where: { email: dto.email } });
+    const existente = await this.usuariosRepo.findOne({
+      where: { email: dto.email },
+    });
     if (existente) throw new ConflictException('El email ya está registrado');
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -108,24 +128,33 @@ export class AdminService {
     return withoutPassword(saved);
   }
 
-  async actualizarUsuario(id: string, dto: ActualizarUsuarioDto, ctx: AdminContext) {
+  async actualizarUsuario(
+    id: string,
+    dto: ActualizarUsuarioDto,
+    ctx: AdminContext,
+  ) {
     const usuario = await this.usuariosRepo.findOne({ where: { id } });
     if (!usuario) throw new NotFoundException('Usuario no encontrado');
 
     const esCuentaPropia = ctx.userId === id;
 
     if (dto.email && dto.email !== usuario.email) {
-      const existente = await this.usuariosRepo.findOne({ where: { email: dto.email } });
+      const existente = await this.usuariosRepo.findOne({
+        where: { email: dto.email },
+      });
       if (existente) throw new ConflictException('El email ya está registrado');
       usuario.email = dto.email;
     }
-    if (dto.password) usuario.passwordHash = await bcrypt.hash(dto.password, 10);
+    if (dto.password)
+      usuario.passwordHash = await bcrypt.hash(dto.password, 10);
     if (dto.nombre !== undefined) usuario.nombre = dto.nombre;
     if (dto.apellido !== undefined) usuario.apellido = dto.apellido;
     if (dto.telefono !== undefined) usuario.telefono = dto.telefono;
     if (dto.rol !== undefined) {
       if (esCuentaPropia && dto.rol !== 'admin')
-        throw new BadRequestException('No puedes cambiar tu propio rol de administrador');
+        throw new BadRequestException(
+          'No puedes cambiar tu propio rol de administrador',
+        );
       usuario.rol = dto.rol;
     }
     if (dto.estado !== undefined) {
@@ -146,9 +175,11 @@ export class AdminService {
   }
 
   async eliminarUsuario(id: string, ctx: AdminContext) {
-    if (ctx.userId === id) throw new BadRequestException('No puedes eliminar tu propia cuenta');
+    if (ctx.userId === id)
+      throw new BadRequestException('No puedes eliminar tu propia cuenta');
     const usuario = await this.usuariosRepo.findOne({ where: { id } });
-    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
+    if (!usuario || usuario.deletedAt)
+      throw new NotFoundException('Usuario no encontrado');
 
     usuario.deletedAt = new Date();
     usuario.deletedBy = ctx.userId;
@@ -227,7 +258,12 @@ export class AdminService {
   }
 
   async actualizarEvento(id: string, dto: UpdateEventoDto, ctx: AdminContext) {
-    const evento = await this.eventosService.update(id, dto, ctx.userId, 'admin');
+    const evento = await this.eventosService.update(
+      id,
+      dto,
+      ctx.userId,
+      'admin',
+    );
     await this.auditoriaService.registrar({
       usuarioId: ctx.userId,
       accion: 'actualizar_evento',
@@ -262,7 +298,11 @@ export class AdminService {
     return this.resenasService.listAll({ estado });
   }
 
-  async moderarResena(id: string, dto: { estado: string; motivoReporte?: string }, ctx: AdminContext) {
+  async moderarResena(
+    id: string,
+    dto: { estado: string; motivoReporte?: string },
+    ctx: AdminContext,
+  ) {
     const resena = await this.resenasService.moderar(id, dto);
     await this.auditoriaService.registrar({
       usuarioId: ctx.userId,

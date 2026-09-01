@@ -69,7 +69,8 @@ export class SocialService {
     const notificacion = await this.notificacionesRepo.findOne({
       where: { id, usuarioId: userId },
     });
-    if (!notificacion) throw new NotFoundException('Notificación no encontrada');
+    if (!notificacion)
+      throw new NotFoundException('Notificación no encontrada');
     notificacion.leida = true;
     return this.notificacionesRepo.save(notificacion);
   }
@@ -101,7 +102,10 @@ export class SocialService {
     );
   }
 
-  async notificarFollowers(usuarioId: string, evento: { id: string; titulo: string }) {
+  async notificarFollowers(
+    usuarioId: string,
+    evento: { id: string; titulo: string },
+  ) {
     const seguidores = await this.seguidoresRepo.find({
       where: { seguidoId: usuarioId },
     });

@@ -1,5 +1,8 @@
 import { IsIn, IsOptional } from 'class-validator';
-import { ROL_ORGANIZACION_ENUM, ESTADO_MIEMBRO_ENUM } from '../../common/enums.js';
+import {
+  ROL_ORGANIZACION_ENUM,
+  ESTADO_MIEMBRO_ENUM,
+} from '../../common/enums.js';
 
 export class UpdateMemberDto {
   @IsOptional()

@@ -28,14 +28,21 @@ export class OrganizacionesService {
     });
   }
 
-  async addMember(organizadorId: string, dto: AddMemberDto, userId: string, rolUsuario: string) {
-    await this.assertPropietario(organizadorId, userId, rolUsuario);
+  async addMember(
+    organizadorId: string,
+    dto: AddMemberDto,
+    userId: string,
+    rolUsuario: string,
+  ) {
+    this.assertPropietario(organizadorId, userId, rolUsuario);
 
     const count = await this.miembrosRepo.count({
       where: { organizadorId, estado: 'activo' },
     });
     if (count >= 2) {
-      throw new BadRequestException('Un organizador no puede tener más de 2 miembros activos');
+      throw new BadRequestException(
+        'Un organizador no puede tener más de 2 miembros activos',
+      );
     }
 
     if (dto.usuarioId) {
@@ -44,7 +51,9 @@ export class OrganizacionesService {
       });
       if (existing) throw new BadRequestException('El usuario ya es miembro');
 
-      const usuario = await this.usuariosRepo.findOne({ where: { id: dto.usuarioId } });
+      const usuario = await this.usuariosRepo.findOne({
+        where: { id: dto.usuarioId },
+      });
       if (!usuario) throw new NotFoundException('Usuario no encontrado');
 
       return this.miembrosRepo.save(
@@ -63,7 +72,10 @@ export class OrganizacionesService {
       const existingByEmail = await this.miembrosRepo.findOne({
         where: { organizadorId, emailInvitacion: dto.emailInvitacion },
       });
-      if (existingByEmail) throw new BadRequestException('Ya se envió una invitación a este email');
+      if (existingByEmail)
+        throw new BadRequestException(
+          'Ya se envió una invitación a este email',
+        );
 
       return this.miembrosRepo.save(
         this.miembrosRepo.create({
@@ -77,7 +89,9 @@ export class OrganizacionesService {
       );
     }
 
-    throw new BadRequestException('Debe proporcionar usuarioId o emailInvitacion');
+    throw new BadRequestException(
+      'Debe proporcionar usuarioId o emailInvitacion',
+    );
   }
 
   async updateMember(
@@ -87,35 +101,53 @@ export class OrganizacionesService {
     userId: string,
     rolUsuario: string,
   ) {
-    await this.assertPropietario(organizadorId, userId, rolUsuario);
-    const miembro = await this.miembrosRepo.findOne({ where: { id: miembroId } });
+    this.assertPropietario(organizadorId, userId, rolUsuario);
+    const miembro = await this.miembrosRepo.findOne({
+      where: { id: miembroId },
+    });
     if (!miembro) throw new NotFoundException('Miembro no encontrado');
     Object.assign(miembro, dto);
     return this.miembrosRepo.save(miembro);
   }
 
-  async removeMember(organizadorId: string, miembroId: string, userId: string, rolUsuario: string) {
-    await this.assertPropietario(organizadorId, userId, rolUsuario);
-    const miembro = await this.miembrosRepo.findOne({ where: { id: miembroId } });
+  async removeMember(
+    organizadorId: string,
+    miembroId: string,
+    userId: string,
+    rolUsuario: string,
+  ) {
+    this.assertPropietario(organizadorId, userId, rolUsuario);
+    const miembro = await this.miembrosRepo.findOne({
+      where: { id: miembroId },
+    });
     if (!miembro) throw new NotFoundException('Miembro no encontrado');
     await this.miembrosRepo.remove(miembro);
     return { message: 'Miembro eliminado' };
   }
 
-  async getMemberRole(organizadorId: string, userId: string): Promise<string | null> {
+  async getMemberRole(
+    organizadorId: string,
+    userId: string,
+  ): Promise<string | null> {
     const miembro = await this.miembrosRepo.findOne({
       where: { organizadorId, usuarioId: userId, estado: 'activo' },
     });
     return miembro?.rolOrganizacion ?? null;
   }
 
-  async assertPropietario(organizadorId: string, userId: string, rolUsuario: string) {
+  assertPropietario(organizadorId: string, userId: string, rolUsuario: string) {
     if (rolUsuario === 'admin') return;
     if (organizadorId === userId) return;
-    throw new ForbiddenException('Solo el organizador puede gestionar miembros');
+    throw new ForbiddenException(
+      'Solo el organizador puede gestionar miembros',
+    );
   }
 
-  async assertEditor(organizadorId: string, userId: string, rolUsuario: string) {
+  async assertEditor(
+    organizadorId: string,
+    userId: string,
+    rolUsuario: string,
+  ) {
     if (rolUsuario === 'admin') return;
     if (organizadorId === userId) return;
     const role = await this.getMemberRole(organizadorId, userId);

@@ -16,7 +16,14 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Evento, Reserva, Resena, MiembroOrganizacion, Ubicacion]),
+    TypeOrmModule.forFeature([
+      Usuario,
+      Evento,
+      Reserva,
+      Resena,
+      MiembroOrganizacion,
+      Ubicacion,
+    ]),
     EventosModule,
     ReservasModule,
     ResenasModule,

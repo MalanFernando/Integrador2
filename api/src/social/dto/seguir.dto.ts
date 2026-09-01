@@ -1,4 +1,4 @@
-import { IsIn, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class SeguirDto {
   @IsString()

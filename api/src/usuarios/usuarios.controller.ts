@@ -1,4 +1,12 @@
-import { Body, Controller, Get, NotFoundException, Param, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Param,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { UsuariosService } from './usuarios.service.js';
 import { withoutPassword } from '../common/utils.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';

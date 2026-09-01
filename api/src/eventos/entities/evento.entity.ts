@@ -84,15 +84,31 @@ export class Evento {
   @Column({ type: 'jsonb', default: () => "'[]'" })
   localidades: Record<string, unknown>[];
 
-  @Column({ name: 'informacion_pago', type: 'jsonb', nullable: true, default: null })
+  @Column({
+    name: 'informacion_pago',
+    type: 'jsonb',
+    nullable: true,
+    default: null,
+  })
   informacionPago: Record<string, unknown> | null;
 
-  @Column({ name: 'preguntas_frecuentes', type: 'jsonb', default: () => "'[]'" })
+  @Column({
+    name: 'preguntas_frecuentes',
+    type: 'jsonb',
+    default: () => "'[]'",
+  })
   preguntasFrecuentes: Record<string, unknown>[];
 
   @Column({
     type: 'enum',
-    enum: ['borrador', 'pendiente', 'aprobado', 'rechazado', 'cancelado', 'finalizado'],
+    enum: [
+      'borrador',
+      'pendiente',
+      'aprobado',
+      'rechazado',
+      'cancelado',
+      'finalizado',
+    ],
     default: 'borrador',
   })
   estado: string;

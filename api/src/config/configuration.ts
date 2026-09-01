@@ -7,8 +7,3 @@ export default registerAs('database', () => ({
   password: process.env.DB_PASS || 'postgres',
   database: process.env.DB_NAME || 'hasta_la_vuelta',
 }));
-
-export const jwtConfig = registerAs('jwt', () => ({
-  secret: process.env.JWT_SECRET || 'fallback-secret',
-  expiresIn: process.env.JWT_EXPIRATION || '24h',
-}));

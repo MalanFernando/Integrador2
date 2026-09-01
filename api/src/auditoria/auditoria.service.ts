@@ -25,7 +25,7 @@ export class AuditoriaService {
       accion: params.accion,
       tablaAfectada: params.tablaAfectada,
       registroId: params.registroId ?? null,
-      detalles: params.detalles ?? {},
+      detallesAntesDespues: params.detalles ?? {},
       ipAddress: params.ipAddress ?? null,
     });
     return this.auditoriaRepo.save(row);

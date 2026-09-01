@@ -42,7 +42,13 @@ export class OrganizacionesController {
     @Param('miembroId') miembroId: string,
     @Body() dto: UpdateMemberDto,
   ) {
-    return this.organizacionesService.updateMember(id, miembroId, dto, user.id, user.rol);
+    return this.organizacionesService.updateMember(
+      id,
+      miembroId,
+      dto,
+      user.id,
+      user.rol,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -52,6 +58,11 @@ export class OrganizacionesController {
     @Param('id') id: string,
     @Param('miembroId') miembroId: string,
   ) {
-    return this.organizacionesService.removeMember(id, miembroId, user.id, user.rol);
+    return this.organizacionesService.removeMember(
+      id,
+      miembroId,
+      user.id,
+      user.rol,
+    );
   }
 }

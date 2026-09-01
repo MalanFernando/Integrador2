@@ -16,11 +16,7 @@ export type EstadoUsuario = (typeof ESTADO_USUARIO_ENUM)[number];
 export const ROL_ORGANIZACION_ENUM = ['editor', 'visor'] as const;
 export type RolOrganizacion = (typeof ROL_ORGANIZACION_ENUM)[number];
 
-export const ESTADO_MIEMBRO_ENUM = [
-  'activo',
-  'inactivo',
-  'pendiente',
-] as const;
+export const ESTADO_MIEMBRO_ENUM = ['activo', 'inactivo', 'pendiente'] as const;
 export type EstadoMiembro = (typeof ESTADO_MIEMBRO_ENUM)[number];
 
 export const ESTADO_EVENTO_ENUM = [

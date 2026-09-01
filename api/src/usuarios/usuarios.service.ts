@@ -10,9 +10,11 @@ import { withoutPassword } from '../common/utils.js';
 @Injectable()
 export class UsuariosService {
   constructor(
-    @InjectRepository(Usuario) private readonly usuariosRepo: Repository<Usuario>,
+    @InjectRepository(Usuario)
+    private readonly usuariosRepo: Repository<Usuario>,
     @InjectRepository(Evento) private readonly eventosRepo: Repository<Evento>,
-    @InjectRepository(Seguidor) private readonly seguidoresRepo: Repository<Seguidor>,
+    @InjectRepository(Seguidor)
+    private readonly seguidoresRepo: Repository<Seguidor>,
   ) {}
 
   async findByEmail(email: string): Promise<Usuario | null> {
@@ -42,14 +44,16 @@ export class UsuariosService {
 
   async updateProfile(id: string, dto: UpdateUsuarioDto) {
     const usuario = await this.findOneById(id);
-    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
+    if (!usuario || usuario.deletedAt)
+      throw new NotFoundException('Usuario no encontrado');
     Object.assign(usuario, dto);
     return this.usuariosRepo.save(usuario);
   }
 
   async publicProfile(id: string) {
     const usuario = await this.findOneById(id);
-    if (!usuario || usuario.deletedAt) throw new NotFoundException('Usuario no encontrado');
+    if (!usuario || usuario.deletedAt)
+      throw new NotFoundException('Usuario no encontrado');
     const [eventos, seguidores] = await Promise.all([
       this.eventosRepo.find({
         where: { organizadorId: id, estado: 'aprobado' },

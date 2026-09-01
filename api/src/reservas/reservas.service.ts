@@ -39,7 +39,9 @@ export class ReservasService {
         throw new NotFoundException('Evento no encontrado');
       }
       if (evento.estado !== 'aprobado') {
-        throw new BadRequestException('El evento no está disponible para reservas');
+        throw new BadRequestException(
+          'El evento no está disponible para reservas',
+        );
       }
 
       const localidades = evento.localidades as Array<{
@@ -47,7 +49,9 @@ export class ReservasService {
         aforo: number;
         precio: number;
       }>;
-      const localidad = localidades.find((l) => l.nombre === dto.localidadNombre);
+      const localidad = localidades.find(
+        (l) => l.nombre === dto.localidadNombre,
+      );
       if (!localidad) {
         throw new NotFoundException('Localidad no encontrada en este evento');
       }

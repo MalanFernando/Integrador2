@@ -105,15 +105,15 @@ async function upsertGeografia() {
   console.log('Geografía: OK (provincias y ciudades)');
 }
 
-async function upsertUsuario(email, password, nombreCompleto, rol) {
+async function upsertUsuario(email, password, nombre, apellido, rol) {
   const existente = await client.query('SELECT id FROM usuarios WHERE email = $1', [email]);
   if (existente.rows.length > 0) {
     return existente.rows[0].id;
   }
   const passwordHash = await bcrypt.hash(password, 10);
   const r = await client.query(
-    'INSERT INTO usuarios (email, password_hash, nombre_completo, rol, estado) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-    [email, passwordHash, nombreCompleto, rol, 'activo'],
+    'INSERT INTO usuarios (email, password_hash, nombre, apellido, rol, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+    [email, passwordHash, nombre, apellido, rol, 'activo'],
   );
   return r.rows[0].id;
 }
@@ -138,90 +138,46 @@ async function main() {
   const adminId = await upsertUsuario(
     'admin@hastalavuelta.com',
     'Admin.2026!',
-    'Administrador Hasta la Vuelta',
+    'Administrador',
+    'Hasta la Vuelta',
     'admin',
   );
   const organizadorId = await upsertUsuario(
     'organizador@demo.com',
     'Demo.2026!',
-    'María Fernández',
+    'María',
+    'Fernández',
     'organizador',
   );
-  await upsertUsuario('fan@demo.com', 'Demo.2026!', 'Carlos Pérez', 'usuario');
-  console.log('Usuarios: OK (admin@hastalavuelta.com, organizador@demo.com, fan@demo.com)');
-
-  const org = await client.query('SELECT id FROM organizaciones WHERE slug = $1', ['la-movida-quitena']);
-  let orgId;
-  if (org.rows.length === 0) {
-    const r = await client.query(
-      `INSERT INTO organizaciones
-         (propietario_id, nombre, slug, descripcion, email_contacto, telefono, sitio_web, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [
-        organizadorId,
-        'La Movida Quiteña',
-        'la-movida-quitena',
-        'Productora de eventos culturales y de música en vivo en Quito.',
-        'contacto@lamovidaquitena.ec',
-        '+593 99 000 0000',
-        'https://lamovidaquitena.ec',
-        'activo',
-      ],
-    );
-    orgId = r.rows[0].id;
-    await client.query(
-      'INSERT INTO miembros_organizacion (organizacion_id, usuario_id, rol_organizacion, estado) VALUES ($1, $2, $3, $4)',
-      [orgId, organizadorId, 'propietario', 'activo'],
-    );
-    console.log('Organización: OK (La Movida Quiteña)');
-  } else {
-    orgId = org.rows[0].id;
-  }
-
-  const est = await client.query(
-    'SELECT id FROM establecimientos WHERE organizacion_id = $1 AND nombre_comercial = $2',
-    [orgId, 'Casa de la Música'],
+  const artistaId = await upsertUsuario(
+    'artista@demo.com',
+    'Demo.2026!',
+    'Carlos',
+    'Pérez',
+    'artista',
   );
-  let establecimientoId = null;
-  if (est.rows.length === 0) {
-    const ubId = await crearUbicacion(
-      1,
-      'Av. Amazonas N37-51',
-      'Frente al parque La Carolina',
-      '170516',
-      '-0.180653',
-      '-78.467838',
+  await upsertUsuario('fan@demo.com', 'Demo.2026!', 'Lucía', 'Gómez', 'usuario');
+  console.log('Usuarios: OK (admin@hastalavuelta.com, organizador@demo.com, artista@demo.com, fan@demo.com)');
+
+  // Miembro de organización: el organizador tiene un editor
+  const miembroExistente = await client.query(
+    'SELECT id FROM miembros_organizacion WHERE organizador_id = $1 AND usuario_id = $2',
+    [organizadorId, adminId],
+  );
+  if (miembroExistente.rows.length === 0) {
+    await client.query(
+      'INSERT INTO miembros_organizacion (organizador_id, usuario_id, rol_organizacion, estado) VALUES ($1, $2, $3, $4)',
+      [organizadorId, adminId, 'editor', 'activo'],
     );
-    const r = await client.query(
-      `INSERT INTO establecimientos
-         (organizacion_id, ubicacion_id, nombre_comercial, descripcion, capacidad_maxima, tipo_establecimiento, servicios, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [
-        orgId,
-        ubId,
-        'Casa de la Música',
-        'Sala de conciertos con capacidad para 250 personas.',
-        250,
-        'Sala de conciertos',
-        JSON.stringify([
-          { nombre: 'Barra completa' },
-          { nombre: 'Estacionamiento' },
-          { nombre: 'Sonido profesional' },
-        ]),
-        'aprobado',
-      ],
-    );
-    establecimientoId = r.rows[0].id;
-    console.log('Establecimiento: OK (Casa de la Música)');
-  } else {
-    establecimientoId = est.rows[0].id;
+    console.log('Miembro organización: OK (admin como editor del organizador)');
   }
 
+  // Crear evento de ejemplo
   const ev = await client.query('SELECT id FROM eventos WHERE titulo = $1', ['Noche de Jazz en Quito']);
   if (ev.rows.length === 0) {
     const categoria = await client.query('SELECT id FROM categorias WHERE nombre = $1', ['Música en Vivo']);
     if (categoria.rows.length === 0) {
-      throw new Error('Categoría Música en Vivo no encontrada');
+      throw new Error('Categoría "Música en Vivo" no encontrada. Ejecuta schema.sql primero.');
     }
     const ubId = await crearUbicacion(
       1,
@@ -233,15 +189,31 @@ async function main() {
     );
     const fechaInicio = new Date(Date.now() + 15 * 24 * 3600 * 1000);
     const fechaFin = new Date(fechaInicio.getTime() + 4 * 3600 * 1000);
-    const r = await client.query(
+
+    const localidades = JSON.stringify([
+      { nombre: 'Entrada General', aforo: 150, precio: 20 },
+      { nombre: 'VIP', aforo: 50, precio: 45 },
+    ]);
+    const imagenes = JSON.stringify([
+      'https://images.unsplash.com/photo-1414235077428-338989a2e8c0',
+    ]);
+    const usuariosCartelera = JSON.stringify([
+      { usuarioId: artistaId, nombre: 'Carlos Pérez', rol: 'Artista principal', orden: 1 },
+    ]);
+    const preguntasFrecuentes = JSON.stringify([
+      { titulo: '¿Hay estacionamiento?', respuesta: 'Sí, con tarifa preferencial.' },
+    ]);
+    const etiquetas = JSON.stringify(['jazz', 'en vivo', 'quito']);
+
+    await client.query(
       `INSERT INTO eventos
-         (organizacion_id, establecimiento_id, categoria_id, ubicacion_id, creado_por, titulo, descripcion,
-          fecha_inicio, fecha_fin, capacidad_total, imagen_principal_url, restriccion_acceso, etiquetas,
-          presentado_por, preguntas_frecuentes, aviso_asistentes, estado, revisado_por)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING id`,
+         (organizador_id, categoria_id, ubicacion_id, creado_por, titulo, descripcion,
+          fecha_inicio, fecha_fin, aforo, imagenes, online, usuarios_cartelera,
+          restriccion_acceso, etiquetas, visibilidad, localidades,
+          preguntas_frecuentes, estado, revisado_por)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
-        orgId,
-        establecimientoId,
+        organizadorId,
         categoria.rows[0].id,
         ubId,
         organizadorId,
@@ -250,31 +222,39 @@ async function main() {
         fechaInicio,
         fechaFin,
         200,
-        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0',
+        imagenes,
+        false,
+        usuariosCartelera,
         'Todo público',
-        JSON.stringify(['jazz', 'en vivo', 'quito']),
-        'La Movida Quiteña',
-        JSON.stringify([
-          { pregunta: '¿Hay estacionamiento?', respuesta: 'Sí, con tarifa preferencial.' },
-        ]),
-        'Puertas abren a las 19:00.',
+        etiquetas,
+        'publico',
+        localidades,
+        preguntasFrecuentes,
         'aprobado',
         adminId,
       ],
     );
-    const eventoId = r.rows[0].id;
-    await client.query(
-      `INSERT INTO localidades (evento_id, nombre, descripcion, precio, capacidad_total, tickets_reservados, estado) VALUES
-       ($1, 'Entrada General', 'Acceso a pista general', '20.00', 150, 0, 'disponible'),
-       ($1, 'VIP', 'Mesa cercana al escenario + una bebida', '45.00', 50, 0, 'disponible')`,
-      [eventoId],
-    );
-    await client.query(
-      `INSERT INTO evento_artistas (evento_id, nombre_artista, rol_en_evento, orden) VALUES
-       ($1, 'Trío Jazz Ecuador', 'Artista principal', 1)`,
-      [eventoId],
-    );
     console.log('Evento: OK (Noche de Jazz en Quito, aprobado, con 2 localidades)');
+  }
+
+  // Crear reserva de ejemplo
+  const eventoSeed = await client.query("SELECT id FROM eventos WHERE titulo = 'Noche de Jazz en Quito'");
+  const fanUser = await client.query("SELECT id FROM usuarios WHERE email = 'fan@demo.com'");
+  if (eventoSeed.rows.length > 0 && fanUser.rows.length > 0) {
+    const eventoId = eventoSeed.rows[0].id;
+    const fanId = fanUser.rows[0].id;
+    const reservaExistente = await client.query(
+      'SELECT id FROM reservas WHERE evento_id = $1 AND usuario_id = $2',
+      [eventoId, fanId],
+    );
+    if (reservaExistente.rows.length === 0) {
+      await client.query(
+        `INSERT INTO reservas (evento_id, usuario_id, localidad_nombre, cantidad_tickets, codigo_ticket, qr_payload, estado)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [eventoId, fanId, 'Entrada General', 2, 'TKT-DEMO-001', 'hlt:TKT-DEMO-001', 'confirmada'],
+      );
+      console.log('Reserva: OK (2 tickets Entrada General para fan@demo.com)');
+    }
   }
 
   await client.end();

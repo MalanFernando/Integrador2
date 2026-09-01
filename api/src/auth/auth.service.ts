@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsuariosService } from '../usuarios/usuarios.service.js';
@@ -40,10 +44,16 @@ export class AuthService {
   async login(dto: LoginDto) {
     const usuario = await this.usuariosService.findByEmail(dto.email);
     if (!usuario) throw new UnauthorizedException('Credenciales incorrectas');
-    if (usuario.deletedAt) throw new UnauthorizedException('Cuenta desactivada');
-    if (usuario.estado === 'suspendido') throw new UnauthorizedException('Cuenta suspendida');
-    const passwordValid = await bcrypt.compare(dto.password, usuario.passwordHash);
-    if (!passwordValid) throw new UnauthorizedException('Credenciales incorrectas');
+    if (usuario.deletedAt)
+      throw new UnauthorizedException('Cuenta desactivada');
+    if (usuario.estado === 'suspendido')
+      throw new UnauthorizedException('Cuenta suspendida');
+    const passwordValid = await bcrypt.compare(
+      dto.password,
+      usuario.passwordHash,
+    );
+    if (!passwordValid)
+      throw new UnauthorizedException('Credenciales incorrectas');
     const token = this.generateToken(usuario);
     return {
       access_token: token,
@@ -63,7 +73,11 @@ export class AuthService {
     return withoutPassword(usuario);
   }
 
-  private generateToken(usuario: { id: string; email: string; rol: string }): string {
+  private generateToken(usuario: {
+    id: string;
+    email: string;
+    rol: string;
+  }): string {
     const payload = { sub: usuario.id, email: usuario.email, rol: usuario.rol };
     return this.jwtService.sign(payload);
   }

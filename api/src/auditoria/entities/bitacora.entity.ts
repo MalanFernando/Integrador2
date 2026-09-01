@@ -34,7 +34,7 @@ export class BitacoraAuditoria {
     type: 'jsonb',
     default: () => "'{}'",
   })
-  detalles: Record<string, unknown>;
+  detallesAntesDespues: Record<string, unknown>;
 
   @Column({ name: 'ip_address', type: 'varchar', length: 45, nullable: true })
   ipAddress: string | null;

@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -36,7 +35,7 @@ export class EventosService {
   ) {}
 
   async create(userId: string, dto: CreateEventoDto) {
-    this.assertOrganizador(userId);
+    this.assertOrganizador();
     this.validateFechas(dto.fechaInicio, dto.fechaFin);
     this.validateLocalidades(dto.localidades);
     this.validateCartelera(dto.usuariosCartelera);
@@ -54,13 +53,22 @@ export class EventosService {
         aforo: dto.aforo ?? 100,
         imagenes: dto.imagenes ?? [],
         online: dto.online ?? false,
-        usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<string, unknown>[],
+        usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<
+          string,
+          unknown
+        >[],
         restriccionAcceso: dto.restriccionAcceso ?? 'Todo público',
         etiquetas: dto.etiquetas ?? [],
         visibilidad: dto.visibilidad ?? 'publico',
-        localidades: (dto.localidades ?? []) as unknown as Record<string, unknown>[],
-        informacionPago: dto.informacionPago ? (dto.informacionPago as unknown as Record<string, unknown>) : null,
-        preguntasFrecuentes: (dto.preguntasFrecuentes ?? []) as unknown as Record<string, unknown>[],
+        localidades: (dto.localidades ?? []) as unknown as Record<
+          string,
+          unknown
+        >[],
+        informacionPago: dto.informacionPago
+          ? (dto.informacionPago as unknown as Record<string, unknown>)
+          : null,
+        preguntasFrecuentes: (dto.preguntasFrecuentes ??
+          []) as unknown as Record<string, unknown>[],
         estado: 'borrador',
       }),
     );
@@ -85,13 +93,22 @@ export class EventosService {
         aforo: dto.aforo ?? 100,
         imagenes: dto.imagenes ?? [],
         online: dto.online ?? false,
-        usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<string, unknown>[],
+        usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<
+          string,
+          unknown
+        >[],
         restriccionAcceso: dto.restriccionAcceso ?? 'Todo público',
         etiquetas: dto.etiquetas ?? [],
         visibilidad: dto.visibilidad ?? 'publico',
-        localidades: (dto.localidades ?? []) as unknown as Record<string, unknown>[],
-        informacionPago: dto.informacionPago ? (dto.informacionPago as unknown as Record<string, unknown>) : null,
-        preguntasFrecuentes: (dto.preguntasFrecuentes ?? []) as unknown as Record<string, unknown>[],
+        localidades: (dto.localidades ?? []) as unknown as Record<
+          string,
+          unknown
+        >[],
+        informacionPago: dto.informacionPago
+          ? (dto.informacionPago as unknown as Record<string, unknown>)
+          : null,
+        preguntasFrecuentes: (dto.preguntasFrecuentes ??
+          []) as unknown as Record<string, unknown>[],
         estado: 'aprobado',
         revisadoPor: adminId,
       }),
@@ -112,8 +129,10 @@ export class EventosService {
     const fechaDesde = params.fechaDesde || null;
     const fechaHasta = params.fechaHasta || null;
     const precioMax = params.precioMax ? Number(params.precioMax) : null;
-    const lat = params.lat != null && params.lat !== '' ? Number(params.lat) : null;
-    const lng = params.lng != null && params.lng !== '' ? Number(params.lng) : null;
+    const lat =
+      params.lat != null && params.lat !== '' ? Number(params.lat) : null;
+    const lng =
+      params.lng != null && params.lng !== '' ? Number(params.lng) : null;
     const radioKm = params.radioKm ? Number(params.radioKm) : null;
     const limit = Math.min(Math.max(Number(params.limit ?? 20) || 20, 1), 100);
     const page = Math.max(Number(params.page ?? 1) || 1, 1);
@@ -125,9 +144,23 @@ export class EventosService {
       AND ($3::text IS NULL OR e.titulo ILIKE '%' || $3 || '%')
       AND ($4::timestamptz IS NULL OR e.fecha_inicio >= $4)
       AND ($5::timestamptz IS NULL OR e.fecha_fin <= $5)
-      AND ($6::numeric IS NULL OR (ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography) / 1000) <= $8)
+      AND ($6::numeric IS NULL OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(e.localidades) AS elem
+        WHERE (elem->>'precio')::numeric <= $6
+      ))
+      AND ($7::numeric IS NULL OR (ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000) <= $9)
     `;
-    const paramsArr = [estado, categoriaId, q, fechaDesde, fechaHasta, lat, lng, radioKm];
+    const paramsArr = [
+      estado,
+      categoriaId,
+      q,
+      fechaDesde,
+      fechaHasta,
+      precioMax,
+      lat,
+      lng,
+      radioKm,
+    ];
     const from = `FROM eventos e JOIN categorias cat ON cat.id = e.categoria_id JOIN ubicaciones u ON u.id = e.ubicacion_id WHERE ${where}`;
 
     const totalRes: Array<{ total: number }> = await this.dataSource.query(
@@ -141,10 +174,10 @@ export class EventosService {
          e.ubicacion_id AS "ubicacionId", e.created_at AS "createdAt",
          cat.nombre AS "categoriaNombre", cat.color_hex AS "categoriaColor",
          u.latitud, u.longitud,
-         CASE WHEN $6::numeric IS NOT NULL AND $8::numeric IS NOT NULL
-              THEN ROUND((ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($7, $6), 4326)::geography) / 1000)::numeric, 2)
-              ELSE NULL END AS "distanciaKm"
-       ${from} ORDER BY e.fecha_inicio ASC LIMIT $9 OFFSET $10`,
+          CASE WHEN $7::numeric IS NOT NULL AND $9::numeric IS NOT NULL
+               THEN ROUND((ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000)::numeric, 2)
+               ELSE NULL END AS "distanciaKm"
+       ${from} ORDER BY e.fecha_inicio ASC LIMIT $10 OFFSET $11`,
       [...paramsArr, limit, offset],
     );
     return { items, total: totalRes[0]?.total ?? 0, page, limit };
@@ -153,9 +186,14 @@ export class EventosService {
   async detail(id: string) {
     const evento = await this.eventosRepo.findOne({
       where: { id },
-      relations: { categoria: true, ubicacion: { ciudad: { provincia: true } }, organizador: true },
+      relations: {
+        categoria: true,
+        ubicacion: { ciudad: { provincia: true } },
+        organizador: true,
+      },
     });
-    if (!evento || evento.deletedAt) throw new NotFoundException('Evento no encontrado');
+    if (!evento || evento.deletedAt)
+      throw new NotFoundException('Evento no encontrado');
     const resenas = await this.resenasRepo.find({
       where: { eventoId: id, estado: 'visible' },
       relations: { autor: true },
@@ -172,7 +210,12 @@ export class EventosService {
     };
   }
 
-  async update(id: string, dto: UpdateEventoDto, userId: string, rolUsuario: string) {
+  async update(
+    id: string,
+    dto: UpdateEventoDto,
+    userId: string,
+    rolUsuario: string,
+  ) {
     const evento = await this.findForEdit(id, userId, rolUsuario);
     if (dto.fechaInicio && dto.fechaFin) {
       this.validateFechas(dto.fechaInicio, dto.fechaFin);
@@ -180,16 +223,37 @@ export class EventosService {
     if (dto.localidades) this.validateLocalidades(dto.localidades);
     if (dto.usuariosCartelera) this.validateCartelera(dto.usuariosCartelera);
 
-    const { localidades, informacionPago, usuariosCartelera, preguntasFrecuentes, ...fields } = dto;
+    const {
+      localidades,
+      informacionPago,
+      usuariosCartelera,
+      preguntasFrecuentes,
+      ...fields
+    } = dto;
     Object.assign(evento, {
       ...fields,
-      ...(fields.fechaInicio ? { fechaInicio: new Date(fields.fechaInicio) } : {}),
+      ...(fields.fechaInicio
+        ? { fechaInicio: new Date(fields.fechaInicio) }
+        : {}),
       ...(fields.fechaFin ? { fechaFin: new Date(fields.fechaFin) } : {}),
     });
-    if (localidades) evento.localidades = localidades as unknown as Record<string, unknown>[];
-    if (informacionPago) evento.informacionPago = informacionPago as unknown as Record<string, unknown>;
-    if (usuariosCartelera) evento.usuariosCartelera = usuariosCartelera as unknown as Record<string, unknown>[];
-    if (preguntasFrecuentes) evento.preguntasFrecuentes = preguntasFrecuentes as unknown as Record<string, unknown>[];
+    if (localidades)
+      evento.localidades = localidades as unknown as Record<string, unknown>[];
+    if (informacionPago)
+      evento.informacionPago = informacionPago as unknown as Record<
+        string,
+        unknown
+      >;
+    if (usuariosCartelera)
+      evento.usuariosCartelera = usuariosCartelera as unknown as Record<
+        string,
+        unknown
+      >[];
+    if (preguntasFrecuentes)
+      evento.preguntasFrecuentes = preguntasFrecuentes as unknown as Record<
+        string,
+        unknown
+      >[];
 
     await this.eventosRepo.save(evento);
     return this.detail(id);
@@ -198,7 +262,9 @@ export class EventosService {
   async submit(id: string, userId: string, rolUsuario: string) {
     const evento = await this.findForEdit(id, userId, rolUsuario);
     if (evento.estado !== 'borrador' && evento.estado !== 'rechazado')
-      throw new BadRequestException('Solo se pueden enviar eventos en borrador o rechazados');
+      throw new BadRequestException(
+        'Solo se pueden enviar eventos en borrador o rechazados',
+      );
     evento.estado = 'pendiente';
     evento.motivoRechazo = null;
     await this.eventosRepo.save(evento);
@@ -217,7 +283,9 @@ export class EventosService {
   async approve(id: string, adminId: string) {
     const evento = await this.findById(id);
     if (evento.estado !== 'pendiente')
-      throw new BadRequestException('Solo se pueden aprobar eventos en estado pendiente');
+      throw new BadRequestException(
+        'Solo se pueden aprobar eventos en estado pendiente',
+      );
     evento.estado = 'aprobado';
     evento.revisadoPor = adminId;
     evento.motivoRechazo = null;
@@ -227,7 +295,9 @@ export class EventosService {
   async reject(id: string, adminId: string, motivo: string) {
     const evento = await this.findById(id);
     if (evento.estado !== 'pendiente')
-      throw new BadRequestException('Solo se pueden rechazar eventos en estado pendiente');
+      throw new BadRequestException(
+        'Solo se pueden rechazar eventos en estado pendiente',
+      );
     evento.estado = 'rechazado';
     evento.revisadoPor = adminId;
     evento.motivoRechazo = motivo;
@@ -244,24 +314,31 @@ export class EventosService {
 
   async findById(id: string) {
     const evento = await this.eventosRepo.findOne({ where: { id } });
-    if (!evento || evento.deletedAt) throw new NotFoundException('Evento no encontrado');
+    if (!evento || evento.deletedAt)
+      throw new NotFoundException('Evento no encontrado');
     return evento;
   }
 
   private async findForEdit(id: string, userId: string, rolUsuario: string) {
     const evento = await this.findById(id);
     if (rolUsuario === 'admin') return evento;
-    await this.organizacionesService.assertEditor(evento.organizadorId, userId, rolUsuario);
+    await this.organizacionesService.assertEditor(
+      evento.organizadorId,
+      userId,
+      rolUsuario,
+    );
     return evento;
   }
 
-  private assertOrganizador(userId: string) {
+  private assertOrganizador() {
     // The controller should verify rol before calling this
   }
 
   private validateFechas(inicio: string, fin: string) {
     if (new Date(fin) <= new Date(inicio))
-      throw new BadRequestException('La fecha de fin debe ser posterior a la de inicio');
+      throw new BadRequestException(
+        'La fecha de fin debe ser posterior a la de inicio',
+      );
   }
 
   private validateLocalidades(localidades?: unknown[]) {
