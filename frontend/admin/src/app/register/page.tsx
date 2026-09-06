@@ -12,11 +12,9 @@ import { Input } from '@/components/ui/input';
 
 type FormValues = {
   nombre: string;
-  apellido: string;
   email: string;
-  telefono: string;
-  cedula: string;
   password: string;
+  confirmPassword: string;
 };
 
 export default function RegisterPage() {
@@ -32,11 +30,9 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema) as Resolver<FormValues>,
     defaultValues: {
       nombre: '',
-      apellido: '',
       email: '',
-      telefono: '',
-      cedula: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
@@ -48,9 +44,6 @@ export default function RegisterPage() {
         email: values.email.trim(),
         password: values.password,
         nombre: values.nombre.trim(),
-        apellido: values.apellido.trim() || undefined,
-        telefono: values.telefono.trim() || undefined,
-        cedula: values.cedula.trim() || undefined,
       });
       setSuccess(true);
     } catch (err) {
@@ -115,27 +108,16 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Input
-                id="nombre"
-                label="Nombre"
-                type="text"
-                required
-                autoComplete="given-name"
-                placeholder="Juan"
-                error={errors.nombre?.message}
-                {...register('nombre')}
-              />
-              <Input
-                id="apellido"
-                label="Apellido"
-                type="text"
-                autoComplete="family-name"
-                placeholder="Pérez"
-                error={errors.apellido?.message}
-                {...register('apellido')}
-              />
-            </div>
+            <Input
+              id="nombre"
+              label="Nombre"
+              type="text"
+              required
+              autoComplete="given-name"
+              placeholder="Juan"
+              error={errors.nombre?.message}
+              {...register('nombre')}
+            />
 
             <Input
               id="email"
@@ -148,27 +130,6 @@ export default function RegisterPage() {
               {...register('email')}
             />
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <Input
-                id="telefono"
-                label="Teléfono"
-                type="tel"
-                autoComplete="tel"
-                placeholder="+593 99 000 0000"
-                error={errors.telefono?.message}
-                {...register('telefono')}
-              />
-              <Input
-                id="cedula"
-                label="Cédula"
-                type="text"
-                autoComplete="off"
-                placeholder="10 dígitos"
-                error={errors.cedula?.message}
-                {...register('cedula')}
-              />
-            </div>
-
             <Input
               id="password"
               label="Contraseña"
@@ -178,6 +139,17 @@ export default function RegisterPage() {
               placeholder="Mínimo 8 caracteres"
               error={errors.password?.message}
               {...register('password')}
+            />
+
+            <Input
+              id="confirmPassword"
+              label="Confirmar contraseña"
+              type="password"
+              required
+              autoComplete="new-password"
+              placeholder="Repite la contraseña"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword')}
             />
 
             <Button type="submit" className="w-full" disabled={loading}>

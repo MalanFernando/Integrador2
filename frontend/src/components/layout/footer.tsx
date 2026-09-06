@@ -16,10 +16,10 @@ export function Footer() {
           </div>
           <nav className="flex flex-col gap-3">
             <Link
-              href="/"
+              href="/explorar"
               className="text-sm font-semibold text-white/60 transition-colors hover:text-white"
             >
-              Inicio
+              Explorar
             </Link>
             <Link
               href="/mapa"
@@ -28,10 +28,10 @@ export function Footer() {
               Mapa
             </Link>
             <Link
-              href="/eventos"
+              href="/inicio"
               className="text-sm font-semibold text-white/60 transition-colors hover:text-white"
             >
-              Eventos
+              Conócenos
             </Link>
           </nav>
         </div>

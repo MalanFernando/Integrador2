@@ -98,16 +98,17 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'La contraseña es obligatoria'),
 });
 
-export const registerSchema = z.object({
-  nombre: nombreSchema,
-  apellido: z
-    .union([z.literal(''), apellidoBase])
-    .transform((v) => (v === '' ? undefined : v)),
-  email: emailSchema,
-  telefono: telefonoOpcional,
-  cedula: cedulaOpcional,
-  password: passwordSchema,
-});
+export const registerSchema = z
+  .object({
+    nombre: nombreSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña'),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
 
 export const SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

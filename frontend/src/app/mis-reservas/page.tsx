@@ -98,7 +98,7 @@ export default function MisReservasPage() {
           {!loading && reservas.length === 0 && (
             <div className="text-center py-16 space-y-4">
               <p className="text-white/50">Aún no tienes reservas</p>
-              <Link href="/eventos">
+              <Link href="/explorar">
                 <span className="text-white font-bold underline">Explorar eventos</span>
               </Link>
             </div>

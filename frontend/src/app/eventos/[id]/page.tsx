@@ -184,7 +184,7 @@ export default function EventoDetallePage() {
         <main className="flex-1 flex items-center justify-center py-24">
           <div className="text-center space-y-4">
             <p className="text-white/50">{error || 'Evento no encontrado'}</p>
-            <Link href="/eventos">
+            <Link href="/explorar">
               <Button variant="outline" className="border-white/20 text-white">
                 Volver a explorar
               </Button>
@@ -205,7 +205,7 @@ export default function EventoDetallePage() {
       <Navbar />
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/eventos" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6">
+          <Link href="/explorar" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors mb-6">
             <ArrowLeft className="h-4 w-4" />
             <span className="text-sm">Volver a explorar</span>
           </Link>

@@ -40,10 +40,7 @@ export function RegisterForm() {
     resolver: zodResolver(registerFormSchema),
     defaultValues: {
       nombre: '',
-      apellido: '',
       email: '',
-      telefono: '',
-      cedula: '',
       password: '',
       confirmPassword: '',
     },
@@ -56,9 +53,6 @@ export function RegisterForm() {
         email: values.email.toLowerCase(),
         password: values.password,
         nombre: values.nombre,
-        apellido: values.apellido,
-        telefono: values.telefono,
-        cedula: values.cedula,
       });
       router.push('/');
     } catch (err) {
@@ -88,14 +82,6 @@ export function RegisterForm() {
       />
 
       <Input
-        id="apellido"
-        label="Apellido"
-        placeholder="Apellido"
-        {...registerField('apellido')}
-        error={errors.apellido?.message}
-      />
-
-      <Input
         id="email"
         label="Correo electrónico"
         type="email"
@@ -103,22 +89,6 @@ export function RegisterForm() {
         {...registerField('email')}
         error={errors.email?.message}
         required
-      />
-
-      <Input
-        id="telefono"
-        label="Teléfono"
-        placeholder="+593 999 999 999"
-        {...registerField('telefono')}
-        error={errors.telefono?.message}
-      />
-
-      <Input
-        id="cedula"
-        label="Cédula"
-        placeholder="1234567890"
-        {...registerField('cedula')}
-        error={errors.cedula?.message}
       />
 
       <div className="relative">

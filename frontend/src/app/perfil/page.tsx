@@ -322,7 +322,7 @@ export default function PerfilPage() {
                 </div>
               )}
               <div className="mt-8 text-center">
-                <Link href="/eventos" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm">
+                <Link href="/explorar" className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm">
                   Explorar más eventos <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>

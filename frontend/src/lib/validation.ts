@@ -85,10 +85,7 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   nombre: nombreSchema,
-  apellido: apellidoBase.optional().or(z.literal('')).transform((v) => (v ? v : undefined)),
   email: emailSchema,
-  telefono: telefonoOpcional,
-  cedula: cedulaOpcional,
   password: passwordSchema,
 });
 
