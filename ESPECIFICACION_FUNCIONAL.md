@@ -123,7 +123,7 @@ La separación es **100% por URL**: cada dominio se abre en su propia pestaña y
 
 ### 5.1 Registro / Login
 
-- **Registro:** correo electrónico real (validación de formato + dominio real) o Google OAuth. Campos: `nombre`, `apellido`, `email`, `password` (mín. 8 chars, mayúscula, minúscula, número), `telefono` (opcional). Se crea con `rol = 'usuario'`.
+- **Registro:** correo electrónico real (validación de formato + dominio real) o Google OAuth. Campos: `nombre`, `email` (real), `password` (mín. 8 chars, mayúscula, minúscula, número) y confirmación de contraseña (solo frontend). `apellido`, `telefono` y `cedula` NO se piden en el registro (se completan luego desde el perfil); el backend rechaza campos extra (`register.dto.ts` solo acepta nombre/email/password). Se crea con `rol = 'usuario'`.
 - **Login:** correo + contraseña, o Google.
 - **Admin:** solo correo electrónico real (sin Google).
 - **Recuperación de contraseña:** `POST /api/auth/forgot-password` (envía email con token) → página `/reset-password` → `POST /api/auth/reset-password`.

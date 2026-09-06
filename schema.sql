@@ -1,11 +1,11 @@
 ﻿
--- 1. ACTIVACIÃ“N DE EXTENSIONES
+-- 1. ACTIVACIÓN DE EXTENSIONES
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 
 -- =============================================================================
--- 2. ELIMINACIÃ“N DE TRIGGERS Y FUNCIONES
+-- 2. ELIMINACIÓN DE TRIGGERS Y FUNCIONES
 -- =============================================================================
 
 DROP TRIGGER IF EXISTS trg_check_max_eventos_organizador ON eventos CASCADE;
@@ -27,7 +27,7 @@ DROP FUNCTION IF EXISTS check_max_miembros() CASCADE;
 
 
 -- =============================================================================
--- 3. ELIMINACIÃ“N DE TABLAS EN ORDEN DE DEPENDENCIA (FK hijas primero)
+-- 3. ELIMINACIÓN DE TABLAS EN ORDEN DE DEPENDENCIA (FK hijas primero)
 -- =============================================================================
 
 DROP TABLE IF EXISTS bitacora_auditoria CASCADE;
@@ -53,7 +53,7 @@ DROP TABLE IF EXISTS provincias CASCADE;
 
 
 -- =============================================================================
--- 4. ELIMINACIÃ“N Y CREACIÃ“N DE TIPOS ENUMERADOS
+-- 4. ELIMINACIÓN Y CREACIÓN DE TIPOS ENUMERADOS
 -- =============================================================================
 
 DROP TYPE IF EXISTS rol_usuario_enum CASCADE;
@@ -91,7 +91,7 @@ CREATE TYPE estado_suscripcion_enum AS ENUM ('activa', 'cancelada', 'expirada', 
 
 
 -- =============================================================================
--- 5. TABLAS DE GEOGRAFÃA Y POSTGIS
+-- 5. TABLAS DE GEOGRAFÍA Y POSTGIS
 -- =============================================================================
 
 CREATE TABLE provincias (
@@ -124,7 +124,7 @@ CREATE INDEX idx_ubicaciones_geom ON ubicaciones USING GIST(geom);
 
 
 -- =============================================================================
--- 6. TABLA DE PLANES (monetizaciÃ³n â€” debe crearse antes que usuarios por FK)
+-- 6. TABLA DE PLANES (monetización — debe crearse antes que usuarios por FK)
 -- =============================================================================
 
 CREATE TABLE planes (
@@ -181,7 +181,7 @@ CREATE TABLE preferencias_usuario (
 
 
 -- =============================================================================
--- 8. TOKENS DE RESETEO DE CONTRASEÃ‘A
+-- 8. TOKENS DE RESETEO DE CONTRASEÑA
 -- =============================================================================
 
 CREATE TABLE password_reset_tokens (
@@ -198,7 +198,7 @@ CREATE INDEX idx_password_reset_usuario ON password_reset_tokens(usuario_id);
 
 
 -- =============================================================================
--- 9. SUSCRIPCIONES (relaciÃ³n usuario â†” plan)
+-- 9. SUSCRIPCIONES (relación usuario ↔ plan)
 -- =============================================================================
 
 CREATE TABLE suscripciones (
@@ -214,7 +214,7 @@ CREATE TABLE suscripciones (
 
 
 -- =============================================================================
--- 10. MIEMBROS DE ORGANIZACIÃ“N (un organizador puede tener max 2 miembros)
+-- 10. MIEMBROS DE ORGANIZACIÓN (un organizador puede tener máximo 2 miembros)
 -- =============================================================================
 
 CREATE TABLE miembros_organizacion (
@@ -235,7 +235,7 @@ CREATE TABLE miembros_organizacion (
 
 
 -- =============================================================================
--- 11. CATEGORÃAS Y EVENTOS
+-- 11. CATEGORÍAS Y EVENTOS
 -- =============================================================================
 
 CREATE TABLE categorias (
@@ -261,7 +261,7 @@ CREATE TABLE eventos (
     online BOOLEAN NOT NULL DEFAULT FALSE,
     link_online TEXT DEFAULT NULL,
     usuarios_cartelera JSONB DEFAULT '[]'::jsonb,
-    restriccion_acceso VARCHAR(100) DEFAULT 'Todo pÃºblico',
+    restriccion_acceso VARCHAR(100) DEFAULT 'Todo público',
     etiquetas JSONB DEFAULT '[]'::jsonb,
     visibilidad visibilidad_enum NOT NULL DEFAULT 'publico',
     es_gratuito BOOLEAN NOT NULL DEFAULT FALSE,
@@ -288,7 +288,7 @@ CREATE TABLE event_visitas (
 
 
 -- =============================================================================
--- 12. RESERVAS (TICKETS), RESEÃ‘AS Y SOCIAL
+-- 12. RESERVAS (TICKETS), RESEÑAS Y SOCIAL
 -- =============================================================================
 
 CREATE TABLE reservas (
@@ -391,7 +391,7 @@ CREATE TABLE bitacora_auditoria (
 -- 13. TRIGGERS
 -- =============================================================================
 
--- 13a. Trigger genÃ©rico para actualizar updated_at automÃ¡ticamente
+-- 13a. Trigger genérico para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -440,7 +440,7 @@ CREATE TRIGGER trg_update_suscripciones_updated_at
     BEFORE UPDATE ON suscripciones
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- 13b. Trigger para mÃ¡ximo 5 eventos activos por organizador
+-- 13b. Trigger para máximo 5 eventos activos por organizador
 CREATE OR REPLACE FUNCTION check_max_eventos_organizador()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -454,7 +454,7 @@ BEGIN
       AND id != COALESCE(NEW.id, 0);
 
     IF v_count >= 5 THEN
-        RAISE EXCEPTION 'Un organizador no puede tener mÃ¡s de 5 eventos activos (actualmente tiene %)', v_count;
+        RAISE EXCEPTION 'Un organizador no puede tener más de 5 eventos activos (actualmente tiene %)', v_count;
     END IF;
     RETURN NEW;
 END;
@@ -464,7 +464,7 @@ CREATE TRIGGER trg_check_max_eventos_organizador
     BEFORE INSERT OR UPDATE ON eventos
     FOR EACH ROW EXECUTE FUNCTION check_max_eventos_organizador();
 
--- 13c. Trigger para mÃ¡ximo 2 miembros por organizador
+-- 13c. Trigger para máximo 2 miembros por organizador
 CREATE OR REPLACE FUNCTION check_max_miembros()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -477,7 +477,7 @@ BEGIN
       AND id != COALESCE(NEW.id, 0);
 
     IF v_count >= 2 THEN
-        RAISE EXCEPTION 'Un organizador no puede tener mÃ¡s de 2 miembros activos (actualmente tiene %)', v_count;
+        RAISE EXCEPTION 'Un organizador no puede tener más de 2 miembros activos (actualmente tiene %)', v_count;
     END IF;
     RETURN NEW;
 END;
@@ -489,7 +489,7 @@ CREATE TRIGGER trg_check_max_miembros
 
 
 -- =============================================================================
--- 14. ÃNDICES DE RENDIMIENTO
+-- 14. ÍNDICES DE RENDIMIENTO
 -- =============================================================================
 
 -- Usuarios
@@ -527,7 +527,7 @@ CREATE INDEX idx_reservas_usuario ON reservas(usuario_id);
 CREATE INDEX idx_reservas_evento ON reservas(evento_id);
 CREATE INDEX idx_reservas_evento_localidad ON reservas(evento_id, localidad_nombre);
 
--- ReseÃ±as
+-- Reseñas
 CREATE INDEX idx_resenas_evento ON resenas(evento_id);
 CREATE INDEX idx_resenas_autor ON resenas(autor_id);
 
@@ -551,7 +551,7 @@ CREATE INDEX idx_seguidores_seguido ON seguidores(seguido_id);
 -- Notificaciones
 CREATE INDEX idx_notificaciones_usuario ON notificaciones(usuario_id, leida);
 
--- AuditorÃ­a
+-- Auditoría
 CREATE INDEX idx_bitacora_usuario ON bitacora_auditoria(usuario_id);
 CREATE INDEX idx_bitacora_tabla ON bitacora_auditoria(tabla_afectada);
 CREATE INDEX idx_bitacora_fecha ON bitacora_auditoria(created_at);
@@ -563,8 +563,8 @@ CREATE INDEX idx_bitacora_fecha ON bitacora_auditoria(created_at);
 
 INSERT INTO planes (nombre, descripcion, max_eventos, max_miembros, resenas_premium, precio_mensual) VALUES
 ('basico', 'Plan gratuito - 5 eventos, 2 miembros', 5, 2, FALSE, 0),
-('pro', 'Plan Pro - 15 eventos, 5 miembros, reseÃ±as premium', 15, 5, TRUE, 19.99),
-('premium', 'Plan Premium - 50 eventos, 15 miembros, reseÃ±as premium + publicidad nativa', 50, 15, TRUE, 49.99);
+('pro', 'Plan Pro - 15 eventos, 5 miembros, reseñas premium', 15, 5, TRUE, 19.99),
+('premium', 'Plan Premium - 50 eventos, 15 miembros, reseñas premium + publicidad nativa', 50, 15, TRUE, 49.99);
 
 INSERT INTO provincias (nombre, codigo_iso) VALUES ('Pichincha', 'EC-P');
 
@@ -572,7 +572,7 @@ INSERT INTO ciudades (provincia_id, nombre, latitud_centro, longitud_centro)
 VALUES (1, 'Quito', -0.180653, -78.467838);
 
 INSERT INTO categorias (nombre, descripcion, icono_url, color_hex) VALUES
-('MÃºsica en Vivo', 'Conciertos, bandas independientes y acÃºsticos', 'music', '#E63946'),
+('Música en Vivo', 'Conciertos, bandas independientes y acústicos', 'music', '#E63946'),
 ('Bar & Discoteca', 'Bares, pub crawls y fiesta nocturna', 'beer', '#F4A261'),
 ('Arte & Cultura', 'Exposiciones, teatro y cultura urbana', 'palette', '#2A9D8F'),
-('GastronomÃ­a & CafÃ©s', 'CafeterÃ­as culturales y ferias gastronÃ³micas', 'coffee', '#E76F51');
+('Gastronomía & Cafés', 'Cafeterías culturales y ferias gastronómicas', 'coffee', '#E76F51');

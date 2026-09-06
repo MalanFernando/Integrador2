@@ -11,6 +11,75 @@
 - `reportes/` — ASP.NET (sin tooling JS).
 - Gestor de paquetes: **pnpm** (no npm/yarn).
 
+## Punto final actual — Limpieza de datos mock (2026-09-05)
+
+### Alcance
+Eliminados todos los datos demo/mock y se verificó que la BD está limpia (transición a datos reales). Se conservan: usuario admin (`admin@hastalavuelta.com` — único acceso al panel) y datos de catálogo/referencia (planes, categorias, provincias/ciudades — el sistema los necesita).
+
+### Cambios
+- `api/scripts/seed.cjs`: eliminados usuarios demo (`organizador@demo.com`, `artista@demo.com`, `fan@demo.com`), miembro demo, evento demo "Noche de Jazz en Quito" y reserva `TKT-DEMO-001`. Quedan `upsertGeografia` (Pichincha/Quito + 6 provincias/ciudades) + seed solo del admin. Eliminada `crearUbicacion()` (solo la usaba el evento demo).
+- `frontend/src/components/home/inicio-view.tsx`: el marquee se alimenta ahora de `GET /categorias` reales (se renderiza solo si hay categorías); eliminados los arreglos hardcodeados `categorias` y `clientes` y la sección "Clientes" falsa.
+- BD actual (`hasta_la_vuelta`): verificada **vacía de datos demo** (0 usuarios / 0 eventos / 0 reservas) — no requirió DELETEs.
+
+### Verificación
+- `api/`: build ✓ | lint ✓ | test ✓ (sin `.spec.ts`, exit 0).
+- `frontend/`: typecheck ✓ | lint ✓ (0 errores; 45 warnings preexistentes) | build ✓ (Next 16, 30 rutas).
+
+## Punto final actual — Gaps backend aplicados (organizador/tickets + reglas + cron) (2026-09-05)
+
+### Alcance
+Cierre de gaps y reglas de backend pendientes (spec 10.1, 7.6, R8/R11/R12, sección 12, D8, G8/G16). Se tocó SOLO el backend (`api/`); **sin cambios de esquema** (`schema.sql`) — todo ya existía en la BD. Verificación: `api/ pnpm run build` ✓ | `lint` ✓ | `test` ✓ (sin `.spec.ts`, `passWithNoTests`).
+
+### Tareas programadas — NUEVO módulo `api/src/tareas/` (spec 12 + G8/R16)
+- Instalado `@nestjs/schedule` (12.0.1) y registrado `ScheduleModule.forRoot()` en `app.module.ts`.
+- `marcarEventosFinalizados()` (cada hora): eventos `aprobado` con `fecha_fin < NOW()` → `finalizado`.
+- `purgarCuentasEliminadas()` (03:00 diario, G8/R16): cuentas soft-deleted ≥ 90 días se borran **físicamente** en una transacción: (1) se inserta bitácora `borrado_fisico_cuenta` con `registro_id` + resumen de movimientos (eventos/reservas/reseñas/seguidores/bitácora) — persiste porque `bitacora.usuario_id` es `ON DELETE SET NULL`; (2) se liberan las FKs restrictivas (`eventos.revisado_por`→NULL, `eventos.creado_por` (de otro organizador)→`organizador_id`, `reservas.verificado_por`/`intervenido_por`→NULL, `reportes_eventos.gestionado_por` y `reportes_reservas.gestionado_por`→NULL, `usuarios.deleted_by`→NULL); (3) `DELETE eventos (organizador_id)` (cascada reservas/reseñas/visitas/cartelera en JSONB); (4) `DELETE usuarios`.
+
+### Organizador y tickets (spec 10.1 + 7.6 + R12, máquina de estado reservas)
+- `POST /api/reservas/:id/reportar-impago` (NUEVO, `dto/reportar-impago.dto.ts`, motivo 5–1000 `MinLength` como el admin): authz `OrganizacionesService.assertEditor` (admin/organizador/editor; moderador u otros → 403). Estado `confirmada` → `reportada`, con `intervenido_por` + `motivo_intervencion`.
+- `POST /api/reservas/:id/eliminar` (NUEVO, `dto/eliminar-reserva.dto.ts`, motivo obligatorio = R12/7.6 "Eliminar con motivo"): cualquier estado no terminal (`cancelada`/`invalidada`/`reportada` rechazados) → `cancelada` con motivo.
+- `reserva.entity.ts`: el array enum de `estado` ahora incluye `'reportada'` (faltaba; el enum de BD y `common/enums.ts` ya lo tenían — cierre de G15 en la entidad).
+- `ReservasModule` importa `OrganizacionesModule` (authz reutilizada).
+
+### Eventos (R8/R11 + limpieza)
+- **R11** `validateInformacionPago` (NUEVO): evento pagado debe traer `informacionPago`; aplicado en `create()`, `adminCreate()` y en `update()` cuando `esGratuito=false` (evalúa el estado final). `update-evento.dto.ts` ganó `esGratuito?: boolean` — el editor de `frontend/admin` ya lo envía al actualizar y el whitelist (`forbidNonWhitelisted`) lo **rechazaba con 400**.
+- **R8/G7** `update()` re-valida conflictos de horario de artistas aunque solo cambien las fechas: cartelera final + fechas finales, excluyendo `id` del propio evento (sin falsos positivos).
+- Eliminado `assertOrganizador()` (método muerto; la authz real es `@Roles` + `assertEditor`).
+
+### Social (G16 — paginación/filtro correctos)
+- `seguidores()` / `siguiendo()`: el filtro por nombre (`q`) ahora se aplica en la query (JOIN + ILIKE), no tras paginar; se eliminaron `whereClause` muerta y el paginate-then-filter que devolvía `total` erróneo y páginas cortas.
+
+### Score organizador (D8) + saved (perfil público)
+- `usuariosService.publicProfile()` ahora devuelve **`score`** (AVG de reseñas visibles de sus eventos, 1 decimal; `null` si no hay) y **`saved`** (favoritos totales sobre sus eventos no eliminados). Con esto el host dashboard puede quitar el "—".
+
+### Seed (G10 parcial: rol)
+- `seed.cjs`: `artista@demo.com` pasa a rol `'usuario'` — `rol_usuario_enum` solo admite `admin/organizador/usuario`, y `'artista'` rompía el INSERT. Su perfil en la cartelera del evento demo se conserva (es `usuarios_cartelera`, no un rol).
+
+### Pendiente (ya documentado antes)
+- **G6** (Cloudinary e2e), **G13** (map routes), **G14** (scraping → modal G3), **G11** (renombrar `reservas`→`tickets`, sección 18), notificaciones de reportes (spec 13 sin wiring en el backend actual).
+
+## Punto final actual — Registro simplificado (2026-09-05)
+
+### Alcance
+- **Registro de usuario (5.1):** solo `nombre`, `email` (real, validación MX/anti-desechable), `contraseña` y confirmación de contraseña (frontend). Se eliminaron `apellido`, `telefono`, `cedula` del registro.
+- **Backend estricto:** `api/src/auth/dto/register.dto.ts` ahora solo acepta `email`/`password`/`nombre` (whitelist `forbidNonWhitelisted` rechaza campos extra); `auth.service.ts` ya no asigna `apellido`/`telefono`. Los validadores de cédula/teléfono siguen en uso en perfil, admin e info de pago.
+- **Frontend usuario:** `frontend/src/components/auth/register-form.tsx` → 4 campos + botón "Continuar con Google" (se mantiene). `registerSchema` en `frontend/src/lib/validation.ts` → `{ nombre, email, password }`.
+- **Frontend admin:** `frontend/admin/src/app/register/page.tsx` → nombre, email, contraseña + confirmar contraseña (nuevo); `registerSchema` en `frontend/admin/src/lib/validation.ts` con `.refine` de coincidencia.
+- **Spec:** sección 5.1 actualizada.
+- **Verificación:** `api/ pnpm run build` ✓ | `lint` ✓ | frontend y frontend/admin `typecheck` + `build` + `lint` ✓ (0 errores; warnings preexistentes).
+
+## Punto final actual — Entrada por sesión: Inicio / Explorar (2026-09-05)
+
+### Alcance
+- **Entrada consciente de sesión en `/`:** `/` renderiza **por sesión** (sin redirect ni parpadeo): mientras `isLoading` → spinner; sin sesión → **Inicio** (landing, antigua home); con sesión → **Explorar** (grilla de eventos). Al iniciar sesión (login/register/Google OAuth redirigen a `/`) el usuario cae directo en Explorar.
+- **Rutas:** `/` = dispatcher por sesión · `/explorar` = grilla canónica para todos (menú y CTAs; los invitados llegan aquí al tocar "Explorar") · `/inicio` = landing/página institucional (logotipo + footer "Conócenos") · `/eventos/[id]` = detalle (se conserva).
+- **Vistas extraídas** a componentes reutilizables (`frontend/src/components/home/`): `inicio-view.tsx` (hero + marquee + grid destacado + clientes + CTA "¿Tienes un evento?"; CTA "Explorar" → `/explorar`) y `explorar-view.tsx` (banner + buscador + filtros modalidad/categoría + grilla). `/inicio/page.tsx` y `/explorar/page.tsx` son wrappers `Navbar + Vista + Footer`.
+- **Navbar** (desktop y móvil) con orden estable: **Explorar** (`/explorar`) · **Mapa** (`/mapa`), idéntico para invitados y usuarios. CTA "Crear evento" visible también sin sesión (redirige a `/login`). Logo → `/inicio` (no hay "About" en el menú, patrón Dice.fm/Bubbl.so).
+- **Backwards-compat:** `redirects()` en `next.config.mjs` mapea `/eventos → /explorar` (301). Links internos de "volver/explorar" (detalle evento, perfil, mis-reservas) → `/explorar`.
+- **Fix lint:** `frontend/eslint.config.mjs` ignoraba solo `.next/**` del root; se agregó `admin/.next/**` (los bundles de build de `frontend/admin/` hacían fallar `eslint .`).
+- **Verificación:** `frontend/ pnpm run typecheck` ✓ | `pnpm run lint` ✓ (0 errores; 45 warnings preexistentes `no-img-element`) | `pnpm run build` ✓ (23 rutas; `/`, `/explorar` e `/inicio` estáticas).
+
+---
 ## Punto final actual — Auditoría panel admin (2026-09-05)
 
 ### Alcance
@@ -374,12 +443,9 @@ FRONTEND_URL=http://localhost:3001
 ## Falta por hacer (pendiente)
 
 ### Backend
-1. **G7** — Detección de conflicto de horarios para artistas
-2. **G8** — Cron job 90 días para eliminación permanente de cuentas soft-deleted
-3. **G10** — Seed script actualizado para nueva estructura
-4. **G11** — Renombrar `reservas` → `tickets` (requiere confirmación sección 18)
-5. Reservas: endpoint `reportar` para que organizador reporte impago
-6. Eventos: cron job para marcar `finalizado` cuando `fecha_fin < ahora`
+1. **G11** — Renombrar `reservas` → `tickets` (requiere confirmación sección 18)
+2. Notificaciones de reportes (spec 13): `reportes_eventos`/`reportes_reservas`/`reportar-impago` no disparan notificaciones aún
+3. **G6** — Verificación end-to-end Cloudinary
 
 ### Frontend
 1. **G14** — Integración completa scraping (frontend G3 → backend)
