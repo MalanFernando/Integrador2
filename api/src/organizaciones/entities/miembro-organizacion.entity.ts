@@ -28,10 +28,20 @@ export class MiembroOrganizacion {
   @JoinColumn({ name: 'usuario_id' })
   usuario: Usuario | null;
 
-  @Column({ name: 'email_invitacion', length: 150, nullable: true })
+  @Column({
+    name: 'email_invitacion',
+    type: 'varchar',
+    length: 150,
+    nullable: true,
+  })
   emailInvitacion: string | null;
 
-  @Column({ name: 'nombre_invitado', length: 150, nullable: true })
+  @Column({
+    name: 'nombre_invitado',
+    type: 'varchar',
+    length: 150,
+    nullable: true,
+  })
   nombreInvitado: string | null;
 
   @Column({

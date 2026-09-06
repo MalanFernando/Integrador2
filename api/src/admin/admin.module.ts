@@ -18,6 +18,8 @@ import { ReservasModule } from '../reservas/reservas.module.js';
 import { ResenasModule } from '../resenas/resenas.module.js';
 import { SocialModule } from '../social/social.module.js';
 import { AuditoriaModule } from '../auditoria/auditoria.module.js';
+import { ReportesModule } from '../reportes/reportes.module.js';
+import { ReportesReservasModule } from '../reportes-reservas/reportes-reservas.module.js';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
     ResenasModule,
     SocialModule,
     AuditoriaModule,
+    ReportesModule,
+    ReportesReservasModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

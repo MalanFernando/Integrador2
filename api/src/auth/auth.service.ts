@@ -36,8 +36,6 @@ export class AuthService {
       email: dto.email,
       passwordHash,
       nombre: dto.nombre,
-      apellido: dto.apellido,
-      telefono: dto.telefono,
     });
     const token = this.generateToken(usuario);
     return {

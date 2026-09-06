@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import configuration from './config/configuration.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -21,6 +22,7 @@ import { PlanesModule } from './planes/planes.module.js';
 import { ReportesModule } from './reportes/reportes.module.js';
 import { ReportesReservasModule } from './reportes-reservas/reportes-reservas.module.js';
 import { PreferenciasModule } from './preferencias/preferencias.module.js';
+import { TareasModule } from './tareas/tareas.module.js';
 
 import { Usuario } from './usuarios/entities/usuario.entity.js';
 import { Provincia } from './geo/entities/provincia.entity.js';
@@ -108,6 +110,8 @@ import { HealthController } from './common/controllers/health.controller.js';
     ReportesModule,
     ReportesReservasModule,
     PreferenciasModule,
+    ScheduleModule.forRoot(),
+    TareasModule,
   ],
   controllers: [HealthController],
   providers: [

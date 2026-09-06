@@ -1,15 +1,12 @@
 import {
   IsEmail,
   IsNotEmpty,
-  IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
   Validate,
 } from 'class-validator';
-import { CedulaEcuatorianaValidator } from '../../common/validators/cedula-ecuatoriana.validator.js';
-import { TelefonoEcuatorianoValidator } from '../../common/validators/telefono-ecuatoriano.validator.js';
 import { EmailRealValidator } from '../../common/validators/email-real.validator.js';
 
 export class RegisterDto {
@@ -37,25 +34,4 @@ export class RegisterDto {
       'El nombre solo puede contener letras, espacios, apóstrofes y guiones',
   })
   nombre: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(150)
-  @Matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/, {
-    message:
-      'El apellido solo puede contener letras, espacios, apóstrofes y guiones',
-  })
-  apellido?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(20)
-  @Validate(TelefonoEcuatorianoValidator)
-  telefono?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(10)
-  @Validate(CedulaEcuatorianaValidator)
-  cedula?: string;
 }

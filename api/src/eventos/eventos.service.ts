@@ -35,11 +35,14 @@ export class EventosService {
   ) {}
 
   async create(userId: string, dto: CreateEventoDto) {
-    this.assertOrganizador();
     this.validateFechas(dto.fechaInicio, dto.fechaFin);
     this.validateLocalidades(dto.localidades);
     this.validateCartelera(dto.usuariosCartelera);
     this.validateModalidad(dto.online, dto.ubicacionId, dto.linkOnline);
+    this.validateInformacionPago(
+      dto.esGratuito,
+      dto.informacionPago as unknown as Record<string, unknown> | null,
+    );
     await this.assertMaxEventosActivos(userId);
     await this.assertMaxEventosTotal(userId);
 
@@ -94,6 +97,10 @@ export class EventosService {
     this.validateLocalidades(dto.localidades);
     this.validateCartelera(dto.usuariosCartelera);
     this.validateModalidad(dto.online, dto.ubicacionId, dto.linkOnline);
+    this.validateInformacionPago(
+      dto.esGratuito,
+      dto.informacionPago as unknown as Record<string, unknown> | null,
+    );
     await this.assertMaxEventosTotal(adminId);
     await this.validateHorariosCartelera(
       dto.usuariosCartelera,
@@ -266,12 +273,18 @@ export class EventosService {
     if (dto.localidades) this.validateLocalidades(dto.localidades);
     if (dto.usuariosCartelera) {
       this.validateCartelera(dto.usuariosCartelera);
-      const inicio = dto.fechaInicio ?? evento.fechaInicio.toISOString();
-      const fin = dto.fechaFin ?? evento.fechaFin.toISOString();
+    }
+    const carteleraFinal = dto.usuariosCartelera ?? evento.usuariosCartelera;
+    const inicioFinal = dto.fechaInicio ?? evento.fechaInicio.toISOString();
+    const finFinal = dto.fechaFin ?? evento.fechaFin.toISOString();
+    if (
+      carteleraFinal.length > 0 &&
+      (dto.usuariosCartelera || dto.fechaInicio || dto.fechaFin)
+    ) {
       await this.validateHorariosCartelera(
-        dto.usuariosCartelera,
-        inicio,
-        fin,
+        carteleraFinal,
+        inicioFinal,
+        finFinal,
         id,
       );
     }
@@ -280,6 +293,15 @@ export class EventosService {
       dto.ubicacionId ?? evento.ubicacionId,
       dto.linkOnline ?? evento.linkOnline,
     );
+    if (dto.esGratuito === false) {
+      this.validateInformacionPago(
+        false,
+        (dto.informacionPago ?? evento.informacionPago) as Record<
+          string,
+          unknown
+        > | null,
+      );
+    }
 
     const localidadesUpdate = dto.localidades as
       Array<{ nombre: string; aforo: number }> | undefined;
@@ -412,10 +434,6 @@ export class EventosService {
     return evento;
   }
 
-  private assertOrganizador() {
-    // The controller should verify rol before calling this
-  }
-
   private validateFechas(inicio: string, fin: string) {
     const now = new Date();
     const fechaInicio = new Date(inicio);
@@ -455,6 +473,18 @@ export class EventosService {
     if (!online && !ubicacionId) {
       throw new BadRequestException(
         'Un evento presencial requiere una ubicación. Activa "Evento online" solo si no tiene lugar físico.',
+      );
+    }
+  }
+
+  private validateInformacionPago(
+    esGratuito?: boolean,
+    informacionPago?: Record<string, unknown> | null,
+  ) {
+    if (esGratuito === true) return;
+    if (!informacionPago) {
+      throw new BadRequestException(
+        'Los eventos pagados deben incluir la información de pago (informacionPago)',
       );
     }
   }

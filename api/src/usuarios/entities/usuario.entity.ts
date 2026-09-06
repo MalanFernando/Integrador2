@@ -76,6 +76,12 @@ export class Usuario {
   @Column({ name: 'fecha_eliminacion', type: 'timestamptz', nullable: true })
   fechaEliminacion: Date | null;
 
-  @Column({ length: 100, nullable: true, unique: true })
+  @Column({
+    name: 'slug',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    unique: true,
+  })
   slug: string | null;
 }

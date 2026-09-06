@@ -43,7 +43,7 @@ export class Reserva {
 
   @Column({
     type: 'enum',
-    enum: ['confirmada', 'verificada', 'cancelada', 'invalidada'],
+    enum: ['confirmada', 'verificada', 'cancelada', 'invalidada', 'reportada'],
     default: 'confirmada',
   })
   estado: string;

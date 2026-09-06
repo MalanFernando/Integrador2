@@ -7,7 +7,10 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Reserva } from './entities/reserva.entity.js';
 import { Evento } from '../eventos/entities/evento.entity.js';
+import { OrganizacionesService } from '../organizaciones/organizaciones.service.js';
 import { CrearReservaDto } from './dto/crear-reserva.dto.js';
+import { ReportarImpagoReservaDto } from './dto/reportar-impago.dto.js';
+import { EliminarReservaDto } from './dto/eliminar-reserva.dto.js';
 
 const CODIGO_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -28,6 +31,7 @@ export class ReservasService {
     private readonly eventosRepo: Repository<Evento>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly organizacionesService: OrganizacionesService,
   ) {}
 
   async create(userId: string, dto: CrearReservaDto) {
@@ -129,6 +133,63 @@ export class ReservasService {
     reserva.verificadoPor = adminId;
     reserva.intervenidoPor = adminId;
     reserva.motivoIntervencion = motivo;
+    return this.reservasRepo.save(reserva);
+  }
+
+  async reportarImpago(
+    id: string,
+    userId: string,
+    rolUsuario: string,
+    dto: ReportarImpagoReservaDto,
+  ) {
+    const reserva = await this.reservasRepo.findOne({
+      where: { id },
+      relations: { evento: true },
+    });
+    if (!reserva || reserva.evento?.deletedAt)
+      throw new NotFoundException('Reserva no encontrada');
+    if (reserva.estado !== 'confirmada')
+      throw new BadRequestException(
+        'Solo se puede reportar un ticket confirmado',
+      );
+    await this.organizacionesService.assertEditor(
+      reserva.evento.organizadorId,
+      userId,
+      rolUsuario,
+    );
+    reserva.estado = 'reportada';
+    reserva.intervenidoPor = userId;
+    reserva.motivoIntervencion = dto.motivo;
+    return this.reservasRepo.save(reserva);
+  }
+
+  async eliminarPorOrganizador(
+    id: string,
+    userId: string,
+    rolUsuario: string,
+    dto: EliminarReservaDto,
+  ) {
+    const reserva = await this.reservasRepo.findOne({
+      where: { id },
+      relations: { evento: true },
+    });
+    if (!reserva || reserva.evento?.deletedAt)
+      throw new NotFoundException('Reserva no encontrada');
+    if (
+      reserva.estado === 'cancelada' ||
+      reserva.estado === 'invalidada' ||
+      reserva.estado === 'reportada'
+    ) {
+      throw new BadRequestException('El ticket ya no puede eliminarse');
+    }
+    await this.organizacionesService.assertEditor(
+      reserva.evento.organizadorId,
+      userId,
+      rolUsuario,
+    );
+    reserva.estado = 'cancelada';
+    reserva.intervenidoPor = userId;
+    reserva.motivoIntervencion = dto.motivo;
     return this.reservasRepo.save(reserva);
   }
 

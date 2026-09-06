@@ -28,7 +28,26 @@ import { UsuariosModule } from '../usuarios/usuarios.module.js';
     TypeOrmModule.forFeature([PasswordResetToken]),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, AuthMailerService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    {
+      provide: GoogleStrategy,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const clientID = configService.get<string>('GOOGLE_CLIENT_ID', '');
+        const clientSecret = configService.get<string>(
+          'GOOGLE_CLIENT_SECRET',
+          '',
+        );
+        if (!clientID || !clientSecret) {
+          return undefined;
+        }
+        return new GoogleStrategy(configService);
+      },
+    },
+    AuthMailerService,
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

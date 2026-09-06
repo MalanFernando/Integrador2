@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Seguidor } from './entities/seguidor.entity.js';
 import { Notificacion } from './entities/notificacion.entity.js';
 import { SeguirDto } from './dto/seguir.dto.js';
@@ -55,37 +55,30 @@ export class SocialService {
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.min(50, Math.max(1, params.limit ?? 20));
     const skip = (page - 1) * limit;
+    const q = params.q?.trim() ?? '';
 
-    const whereClause: Record<string, unknown> = { seguidoId };
-    if (params.q) {
-      whereClause.seguidor = Like(`%${params.q}%`);
-    }
+    const qb = this.seguidoresRepo
+      .createQueryBuilder('sg')
+      .innerJoinAndSelect('sg.seguidor', 'usuario')
+      .where('sg."seguido_id" = :seguidoId', { seguidoId });
 
-    const [seguidores, total] = await this.seguidoresRepo.findAndCount({
-      where: { seguidoId },
-      relations: { seguidor: true },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-    });
-
-    let items = seguidores.map((s) => s.seguidor);
-
-    if (params.q) {
-      const q = params.q.toLowerCase();
-      items = items.filter(
-        (u) =>
-          u.nombre.toLowerCase().includes(q) ||
-          u.apellido.toLowerCase().includes(q),
+    if (q) {
+      qb.andWhere(
+        '(LOWER(usuario.nombre) LIKE LOWER(:q) OR LOWER(usuario.apellido) LIKE LOWER(:q))',
+        { q: `%${q}%` },
       );
     }
+
+    qb.orderBy('sg."created_at"', 'DESC').skip(skip).take(limit);
+
+    const [seguidores, total] = await qb.getManyAndCount();
 
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      items,
+      items: seguidores.map((s) => s.seguidor),
     };
   }
 
@@ -93,32 +86,30 @@ export class SocialService {
     const page = Math.max(1, params.page ?? 1);
     const limit = Math.min(50, Math.max(1, params.limit ?? 20));
     const skip = (page - 1) * limit;
+    const q = params.q?.trim() ?? '';
 
-    const [siguiendo, total] = await this.seguidoresRepo.findAndCount({
-      where: { seguidorId },
-      relations: { seguido: true },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-    });
+    const qb = this.seguidoresRepo
+      .createQueryBuilder('sg')
+      .innerJoinAndSelect('sg.seguido', 'usuario')
+      .where('sg."seguidor_id" = :seguidorId', { seguidorId });
 
-    let items = siguiendo.map((s) => s.seguido);
-
-    if (params.q) {
-      const q = params.q.toLowerCase();
-      items = items.filter(
-        (u) =>
-          u.nombre.toLowerCase().includes(q) ||
-          u.apellido.toLowerCase().includes(q),
+    if (q) {
+      qb.andWhere(
+        '(LOWER(usuario.nombre) LIKE LOWER(:q) OR LOWER(usuario.apellido) LIKE LOWER(:q))',
+        { q: `%${q}%` },
       );
     }
+
+    qb.orderBy('sg."created_at"', 'DESC').skip(skip).take(limit);
+
+    const [siguiendo, total] = await qb.getManyAndCount();
 
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      items,
+      items: siguiendo.map((s) => s.seguido),
     };
   }
 

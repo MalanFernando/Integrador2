@@ -11,6 +11,13 @@ import { ReservasService } from './reservas.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { CrearReservaDto } from './dto/crear-reserva.dto.js';
+import { ReportarImpagoReservaDto } from './dto/reportar-impago.dto.js';
+import { EliminarReservaDto } from './dto/eliminar-reserva.dto.js';
+
+interface UsuarioAutenticado {
+  id: string;
+  rol: string;
+}
 
 @Controller('reservas')
 export class ReservasController {
@@ -38,5 +45,30 @@ export class ReservasController {
   @Delete(':id')
   cancelar(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.reservasService.cancelar(id, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/reportar-impago')
+  reportarImpago(
+    @CurrentUser() user: UsuarioAutenticado,
+    @Param('id') id: string,
+    @Body() dto: ReportarImpagoReservaDto,
+  ) {
+    return this.reservasService.reportarImpago(id, user.id, user.rol, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/eliminar')
+  eliminarPorOrganizador(
+    @CurrentUser() user: UsuarioAutenticado,
+    @Param('id') id: string,
+    @Body() dto: EliminarReservaDto,
+  ) {
+    return this.reservasService.eliminarPorOrganizador(
+      id,
+      user.id,
+      user.rol,
+      dto,
+    );
   }
 }

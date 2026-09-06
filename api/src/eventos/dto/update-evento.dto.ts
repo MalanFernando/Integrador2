@@ -66,6 +66,10 @@ export class UpdateEventoDto {
   online?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  esGratuito?: boolean;
+
+  @IsOptional()
   @IsString()
   @MaxLength(500)
   @IsUrl(
