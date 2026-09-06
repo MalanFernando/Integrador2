@@ -68,6 +68,35 @@ class ApiClient {
   delete<T>(path: string) {
     return this.request<T>(path, { method: 'DELETE' });
   }
+
+  async postFile<T>(path: string, file: File): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: form,
+    });
+    const json = (await res.json()) as ApiEnvelope<T>;
+    if (!res.ok) {
+      throw new Error(
+        (json as { message?: string }).message || 'Error del servidor',
+      );
+    }
+    return json.data;
+  }
+
+  async uploadImage(file: File): Promise<string> {
+    const data = await this.postFile<{ url: string; publicId: string }>(
+      '/upload/imagen',
+      file,
+    );
+    return data.url;
+  }
 }
 
 export const api = new ApiClient();

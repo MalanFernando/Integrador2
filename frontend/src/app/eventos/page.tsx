@@ -2,14 +2,13 @@
 
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
-import { Button } from '@/components/ui/button';
-import { Heart, Search, ChevronLeft, ChevronRight, SlidersHorizontal, MapPin, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
+import { Heart, Search, ChevronLeft, ChevronRight, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import type { EventItem } from '@/types';
+import type { Category, EventItem } from '@/types';
 
-const categorias = ['Todos', 'Música', 'Teatro', 'Feria', 'Dj', 'Comedia', 'Social', 'Concierto', 'Pintura', 'Deporte', 'Negocios', 'Gaming', 'Category event'];
+const modalidades = ['Todas', 'Presencial', 'En línea'];
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -18,39 +17,59 @@ function formatDate(dateStr: string): string {
   return `${dia} ${meses[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
+function formatHora(dateStr: string): string {
+  const d = new Date(dateStr);
+  const horas = d.getHours().toString().padStart(2, '0');
+  const minutos = d.getMinutes().toString().padStart(2, '0');
+  return `${horas}:${minutos}`;
+}
+
 export default function EventosPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoria, setCategoria] = useState('Todos');
+  const [modalidad, setModalidad] = useState('Todas');
+  const [categorias, setCategorias] = useState<Category[]>([]);
 
   useEffect(() => {
     api
       .get<{ items: EventItem[]; total: number }>('/eventos?limit=20')
       .then((res) => {
         setEvents(res.items);
-        setTotal(res.total);
       })
       .catch(() => {
         setEvents([]);
-        setTotal(0);
       })
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    api
+      .get<Category[]>('/categorias')
+      .then(setCategorias)
+      .catch(() => setCategorias([]));
+  }, []);
+
+  const chips = useMemo(() => ['Todos', ...categorias.map((c) => c.nombre)], [categorias]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const ahora = new Date();
     return events.filter((e) => {
       const matchesQ =
         !q ||
         e.titulo.toLowerCase().includes(q) ||
-        e.organizacionNombre.toLowerCase().includes(q) ||
         e.categoriaNombre.toLowerCase().includes(q);
       const matchesCat = categoria === 'Todos' || e.categoriaNombre === categoria;
-      return matchesQ && matchesCat;
+      const matchesModalidad =
+        modalidad === 'Todas' ||
+        (modalidad === 'En línea' && e.online) ||
+        (modalidad === 'Presencial' && !e.online);
+      const isUpcoming = new Date(e.fechaFin) >= ahora;
+      return matchesQ && matchesCat && matchesModalidad && isUpcoming;
     });
-  }, [events, search, categoria]);
+  }, [events, search, categoria, modalidad]);
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
@@ -119,12 +138,24 @@ export default function EventosPage() {
             <button className="px-4 py-2 rounded-lg border border-white/20 text-white text-sm font-medium hover:bg-white/10">
               Fecha
             </button>
-            <button className="px-4 py-2 rounded-lg border border-white/20 text-white/50 text-sm font-medium ml-auto flex items-center gap-1">
-              <SlidersHorizontal className="h-4 w-4" /> Sort
-            </button>
+            <div className="flex gap-2 ml-auto">
+              {modalidades.map((mod) => (
+                <button
+                  key={mod}
+                  onClick={() => setModalidad(mod)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    mod === modalidad
+                      ? 'bg-white text-black'
+                      : 'border border-white/20 text-white hover:bg-white/10'
+                  }`}
+                >
+                  {mod}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-8">
-            {categorias.map((cat) => (
+            {chips.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setCategoria(cat)}
@@ -161,23 +192,20 @@ export default function EventosPage() {
                 No se encontraron eventos
               </p>
             )}
-            {filtered.map((event, i) => (
+            {filtered.map((event) => (
               <Link key={event.id} href={`/eventos/${event.id}`} className="block group">
                 <article className="relative rounded-2xl overflow-hidden h-[380px] transition-transform duration-300 hover:scale-[1.02]">
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-900/40 via-black/80 to-black" />
                   <img
-                    src={event.imagenPrincipalUrl}
+                    src={event.imagenes[0] || '/images/event1.jpg'}
                     alt={event.titulo}
                     className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-60"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
                   <div className="absolute top-3 left-3 z-10 flex gap-2">
-                    <span className="inline-flex items-center rounded-full bg-[#EAF9E3] px-2.5 py-0.5 text-xs font-medium text-[#45B46A]">
-                      Free
-                    </span>
-                    {i === 2 && (
-                      <span className="inline-flex items-center rounded-full bg-purple-600 px-2.5 py-0.5 text-xs font-medium text-white">
-                        Sold out
+                    {event.online && (
+                      <span className="inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-medium text-white">
+                        En línea
                       </span>
                     )}
                   </div>
@@ -186,7 +214,7 @@ export default function EventosPage() {
                   </button>
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                     <p className="text-[#FF8E1C] text-sm font-medium">
-                      {formatDate(event.fechaInicio)} • 20:00 PM
+                      {formatDate(event.fechaInicio)} • {formatHora(event.fechaInicio)}
                     </p>
                     <h3 className="text-white text-lg font-bold mt-1 font-clash">
                       {event.titulo}

@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import type { Reservation } from '@/types';
+import type { EstadoReserva, Reservation } from '@/types';
 
 const REPORTES_URL =
   process.env.NEXT_PUBLIC_REPORTES_URL || 'http://localhost:3002';
@@ -17,6 +17,16 @@ const estadoStyles: Record<string, string> = {
   confirmada: 'bg-[#EAF9E3] text-[#45B46A]',
   verificada: 'bg-[#E3F4F9] text-[#2E7D9E]',
   cancelada: 'bg-[#F9E3E8] text-[#B44561]',
+  invalidada: 'bg-[#FFF3E0] text-[#C77700]',
+  reportada: 'bg-[#F9E3E8] text-[#B44561]',
+};
+
+const estadoLabels: Record<EstadoReserva, string> = {
+  confirmada: 'Confirmada',
+  verificada: 'Verificada',
+  cancelada: 'Cancelada',
+  invalidada: 'Invalidada',
+  reportada: 'Reportada',
 };
 
 export default function MisReservasPage() {
@@ -100,7 +110,7 @@ export default function MisReservasPage() {
                 <div className="flex flex-col sm:flex-row">
                   <div className="sm:w-48 h-32 sm:h-auto bg-white/5">
                     <img
-                      src={res.evento.imagenPrincipalUrl}
+                      src={res.evento.imagenes?.[0] || '/images/event1.jpg'}
                       alt={res.evento.titulo}
                       className="h-full w-full object-cover"
                     />
@@ -114,11 +124,11 @@ export default function MisReservasPage() {
                           </h3>
                         </Link>
                         <p className="text-sm text-white/50 mt-1">
-                          {res.localidad.nombre} · {res.cantidadTickets} ticket(s)
+                          {res.localidadNombre} · {res.cantidadTickets} ticket(s)
                         </p>
                       </div>
                       <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoStyles[res.estado] || 'bg-white/10 text-white/70'}`}>
-                        {res.estado}
+                        {estadoLabels[res.estado]}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-white/50">

@@ -6,6 +6,11 @@ import { Reserva } from '../reservas/entities/reserva.entity.js';
 import { Resena } from '../resenas/entities/resena.entity.js';
 import { MiembroOrganizacion } from '../organizaciones/entities/miembro-organizacion.entity.js';
 import { Ubicacion } from '../geo/entities/ubicacion.entity.js';
+import { Categoria } from '../categorias/entities/categoria.entity.js';
+import { Favorito } from '../favoritos/entities/favorito.entity.js';
+import { ReporteEvento } from '../reportes/entities/reporte-evento.entity.js';
+import { ReporteReserva } from '../reportes-reservas/entities/reporte-reserva.entity.js';
+import { EventVisita } from '../eventos/estadisticas/event-visita.entity.js';
 import { AdminService } from './admin.service.js';
 import { AdminController } from './admin.controller.js';
 import { EventosModule } from '../eventos/eventos.module.js';
@@ -23,6 +28,11 @@ import { AuditoriaModule } from '../auditoria/auditoria.module.js';
       Resena,
       MiembroOrganizacion,
       Ubicacion,
+      Categoria,
+      Favorito,
+      ReporteEvento,
+      ReporteReserva,
+      EventVisita,
     ]),
     EventosModule,
     ReservasModule,

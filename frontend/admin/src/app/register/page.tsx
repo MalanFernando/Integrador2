@@ -1,37 +1,56 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { MapPin, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm, type Resolver } from 'react-hook-form';
+import { useAuth } from '@/lib/auth-context';
+import { registerSchema } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { AuthResponse } from '@/types';
+
+type FormValues = {
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string;
+  cedula: string;
+  password: string;
+};
 
 export default function RegisterPage() {
-  const [nombreCompleto, setNombreCompleto] = useState('');
-  const [email, setEmail] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
+  const { register: registrarse } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(registerSchema) as Resolver<FormValues>,
+    defaultValues: {
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      cedula: '',
+      password: '',
+    },
+  });
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: FormValues) {
     setError('');
-    if (password !== confirm) {
-      setError('Las contraseñas no coinciden');
-      return;
-    }
     setLoading(true);
     try {
-      await api.post<AuthResponse>('/auth/register', {
-        email,
-        password,
-        nombreCompleto,
-        telefono: telefono || undefined,
+      await registrarse({
+        email: values.email.trim(),
+        password: values.password,
+        nombre: values.nombre.trim(),
+        apellido: values.apellido.trim() || undefined,
+        telefono: values.telefono.trim() || undefined,
+        cedula: values.cedula.trim() || undefined,
       });
       setSuccess(true);
     } catch (err) {
@@ -45,10 +64,11 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <MapPin className="h-12 w-12 text-white" />
-          <h1 className="font-clash mt-3 text-center text-2xl font-bold text-white">
-            HASTA LA VUELTA
-          </h1>
+          <img
+            src="/Logotype.svg"
+            alt="Hasta la Vuelta"
+            className="h-12 w-40 object-contain"
+          />
           <p className="mt-1 text-sm text-white/50">Panel administrativo</p>
         </div>
 
@@ -76,8 +96,8 @@ export default function RegisterPage() {
           </div>
         ) : (
           <form
-            onSubmit={handleSubmit}
-            className="space-y-6 rounded-lg border border-white/10 p-8"
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-5 rounded-lg border border-white/10 p-8"
           >
             <div>
               <h2 className="font-clash text-xl font-semibold text-white">
@@ -95,16 +115,27 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <Input
-              id="nombreCompleto"
-              label="Nombre completo"
-              type="text"
-              required
-              autoComplete="name"
-              placeholder="Juan Pérez"
-              value={nombreCompleto}
-              onChange={(e) => setNombreCompleto(e.target.value)}
-            />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Input
+                id="nombre"
+                label="Nombre"
+                type="text"
+                required
+                autoComplete="given-name"
+                placeholder="Juan"
+                error={errors.nombre?.message}
+                {...register('nombre')}
+              />
+              <Input
+                id="apellido"
+                label="Apellido"
+                type="text"
+                autoComplete="family-name"
+                placeholder="Pérez"
+                error={errors.apellido?.message}
+                {...register('apellido')}
+              />
+            </div>
 
             <Input
               id="email"
@@ -113,19 +144,30 @@ export default function RegisterPage() {
               required
               autoComplete="email"
               placeholder="juan@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              error={errors.email?.message}
+              {...register('email')}
             />
 
-            <Input
-              id="telefono"
-              label="Teléfono (opcional)"
-              type="tel"
-              autoComplete="tel"
-              placeholder="+593 99 000 0000"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-            />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Input
+                id="telefono"
+                label="Teléfono"
+                type="tel"
+                autoComplete="tel"
+                placeholder="+593 99 000 0000"
+                error={errors.telefono?.message}
+                {...register('telefono')}
+              />
+              <Input
+                id="cedula"
+                label="Cédula"
+                type="text"
+                autoComplete="off"
+                placeholder="10 dígitos"
+                error={errors.cedula?.message}
+                {...register('cedula')}
+              />
+            </div>
 
             <Input
               id="password"
@@ -134,19 +176,8 @@ export default function RegisterPage() {
               required
               autoComplete="new-password"
               placeholder="Mínimo 8 caracteres"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-
-            <Input
-              id="confirm"
-              label="Confirmar contraseña"
-              type="password"
-              required
-              autoComplete="new-password"
-              placeholder="Repite la contraseña"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
+              error={errors.password?.message}
+              {...register('password')}
             />
 
             <Button type="submit" className="w-full" disabled={loading}>

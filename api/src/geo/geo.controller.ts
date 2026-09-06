@@ -37,4 +37,34 @@ export class GeoController {
   createUbicacion(@Body() dto: CreateUbicacionDto) {
     return this.geoService.create(dto);
   }
+
+  @Get('rutas')
+  calcularRuta(
+    @Query('origenLat') origenLat: string,
+    @Query('origenLng') origenLng: string,
+    @Query('destinoLat') destinoLat: string,
+    @Query('destinoLng') destinoLng: string,
+    @Query('modo') modo: string,
+  ) {
+    return this.geoService.calcularRuta({
+      origenLat: Number(origenLat),
+      origenLng: Number(origenLng),
+      destinoLat: Number(destinoLat),
+      destinoLng: Number(destinoLng),
+      modo: modo === 'caminando' ? 'caminando' : 'vehiculo',
+    });
+  }
+
+  @Get('compartir')
+  compartir(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('nombre') nombre?: string,
+  ) {
+    return this.geoService.generarLinksCompartir(
+      Number(lat),
+      Number(lng),
+      nombre,
+    );
+  }
 }

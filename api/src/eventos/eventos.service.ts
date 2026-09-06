@@ -39,6 +39,19 @@ export class EventosService {
     this.validateFechas(dto.fechaInicio, dto.fechaFin);
     this.validateLocalidades(dto.localidades);
     this.validateCartelera(dto.usuariosCartelera);
+    this.validateModalidad(dto.online, dto.ubicacionId, dto.linkOnline);
+    await this.assertMaxEventosActivos(userId);
+    await this.assertMaxEventosTotal(userId);
+
+    const localidadesCreate = dto.localidades as
+      Array<{ nombre: string; aforo: number }> | undefined;
+    const aforoFinal = this.calcularAforoFinal(dto.aforo, localidadesCreate);
+    this.validateAforoLocalidades(aforoFinal, localidadesCreate);
+    await this.validateHorariosCartelera(
+      dto.usuariosCartelera,
+      dto.fechaInicio,
+      dto.fechaFin,
+    );
 
     const evento = await this.eventosRepo.save(
       this.eventosRepo.create({
@@ -50,9 +63,10 @@ export class EventosService {
         descripcion: dto.descripcion,
         fechaInicio: new Date(dto.fechaInicio),
         fechaFin: new Date(dto.fechaFin),
-        aforo: dto.aforo ?? 100,
+        aforo: aforoFinal,
         imagenes: dto.imagenes ?? [],
         online: dto.online ?? false,
+        linkOnline: dto.linkOnline ?? null,
         usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<
           string,
           unknown
@@ -79,6 +93,21 @@ export class EventosService {
     this.validateFechas(dto.fechaInicio, dto.fechaFin);
     this.validateLocalidades(dto.localidades);
     this.validateCartelera(dto.usuariosCartelera);
+    this.validateModalidad(dto.online, dto.ubicacionId, dto.linkOnline);
+    await this.assertMaxEventosTotal(adminId);
+    await this.validateHorariosCartelera(
+      dto.usuariosCartelera,
+      dto.fechaInicio,
+      dto.fechaFin,
+    );
+
+    const localidadesAdminCreate = dto.localidades as
+      Array<{ nombre: string; aforo: number }> | undefined;
+    const aforoFinalAdmin = this.calcularAforoFinal(
+      dto.aforo,
+      localidadesAdminCreate,
+    );
+    this.validateAforoLocalidades(aforoFinalAdmin, localidadesAdminCreate);
 
     const evento = await this.eventosRepo.save(
       this.eventosRepo.create({
@@ -90,9 +119,10 @@ export class EventosService {
         descripcion: dto.descripcion,
         fechaInicio: new Date(dto.fechaInicio),
         fechaFin: new Date(dto.fechaFin),
-        aforo: dto.aforo ?? 100,
+        aforo: aforoFinalAdmin,
         imagenes: dto.imagenes ?? [],
         online: dto.online ?? false,
+        linkOnline: dto.linkOnline ?? null,
         usuariosCartelera: (dto.usuariosCartelera ?? []) as unknown as Record<
           string,
           unknown
@@ -161,7 +191,7 @@ export class EventosService {
       lng,
       radioKm,
     ];
-    const from = `FROM eventos e JOIN categorias cat ON cat.id = e.categoria_id JOIN ubicaciones u ON u.id = e.ubicacion_id WHERE ${where}`;
+    const from = `FROM eventos e JOIN categorias cat ON cat.id = e.categoria_id LEFT JOIN ubicaciones u ON u.id = e.ubicacion_id WHERE ${where}`;
 
     const totalRes: Array<{ total: number }> = await this.dataSource.query(
       `SELECT COUNT(*)::int AS total ${from}`,
@@ -219,9 +249,49 @@ export class EventosService {
     const evento = await this.findForEdit(id, userId, rolUsuario);
     if (dto.fechaInicio && dto.fechaFin) {
       this.validateFechas(dto.fechaInicio, dto.fechaFin);
+    } else {
+      if (dto.fechaInicio) {
+        this.validateFechaNoPasada(dto.fechaInicio, 'fecha de inicio');
+      }
+      if (dto.fechaFin) {
+        this.validateFechaNoPasada(dto.fechaFin, 'fecha de fin');
+        const fechaInicioActual = evento.fechaInicio;
+        if (new Date(dto.fechaFin) <= fechaInicioActual) {
+          throw new BadRequestException(
+            'La fecha de fin debe ser posterior a la fecha de inicio actual',
+          );
+        }
+      }
     }
     if (dto.localidades) this.validateLocalidades(dto.localidades);
-    if (dto.usuariosCartelera) this.validateCartelera(dto.usuariosCartelera);
+    if (dto.usuariosCartelera) {
+      this.validateCartelera(dto.usuariosCartelera);
+      const inicio = dto.fechaInicio ?? evento.fechaInicio.toISOString();
+      const fin = dto.fechaFin ?? evento.fechaFin.toISOString();
+      await this.validateHorariosCartelera(
+        dto.usuariosCartelera,
+        inicio,
+        fin,
+        id,
+      );
+    }
+    this.validateModalidad(
+      dto.online ?? evento.online,
+      dto.ubicacionId ?? evento.ubicacionId,
+      dto.linkOnline ?? evento.linkOnline,
+    );
+
+    const localidadesUpdate = dto.localidades as
+      Array<{ nombre: string; aforo: number }> | undefined;
+    const localidadesFinales = (localidadesUpdate ?? evento.localidades) as
+      Array<{ nombre: string; aforo: number }> | undefined;
+    const aforoFinal =
+      dto.aforo !== undefined
+        ? dto.aforo
+        : localidadesUpdate !== undefined
+          ? this.calcularAforoFinal(undefined, localidadesUpdate)
+          : evento.aforo;
+    this.validateAforoLocalidades(aforoFinal, localidadesFinales);
 
     const {
       localidades,
@@ -254,6 +324,7 @@ export class EventosService {
         string,
         unknown
       >[];
+    evento.aforo = aforoFinal;
 
     await this.eventosRepo.save(evento);
     return this.detail(id);
@@ -265,6 +336,17 @@ export class EventosService {
       throw new BadRequestException(
         'Solo se pueden enviar eventos en borrador o rechazados',
       );
+    const now = new Date();
+    if (evento.fechaInicio < now) {
+      throw new BadRequestException(
+        'No se puede enviar a revisión un evento cuya fecha de inicio ya pasó',
+      );
+    }
+    if (evento.fechaFin <= evento.fechaInicio) {
+      throw new BadRequestException(
+        'La fecha de fin debe ser posterior a la fecha de inicio',
+      );
+    }
     evento.estado = 'pendiente';
     evento.motivoRechazo = null;
     await this.eventosRepo.save(evento);
@@ -335,10 +417,46 @@ export class EventosService {
   }
 
   private validateFechas(inicio: string, fin: string) {
-    if (new Date(fin) <= new Date(inicio))
+    const now = new Date();
+    const fechaInicio = new Date(inicio);
+    const fechaFin = new Date(fin);
+
+    if (fechaInicio < now) {
+      throw new BadRequestException(
+        'La fecha de inicio no puede ser en el pasado',
+      );
+    }
+
+    if (fechaFin <= fechaInicio)
       throw new BadRequestException(
         'La fecha de fin debe ser posterior a la de inicio',
       );
+  }
+
+  private validateFechaNoPasada(fecha: string, nombre: string) {
+    const now = new Date();
+    const fechaObj = new Date(fecha);
+    if (fechaObj < now) {
+      throw new BadRequestException(`La ${nombre} no puede ser en el pasado`);
+    }
+  }
+
+  private validateModalidad(
+    online?: boolean,
+    ubicacionId?: string | null,
+    linkOnline?: string | null,
+  ) {
+    if (online && !linkOnline) {
+      throw new BadRequestException(
+        'Un evento en línea debe tener un enlace de transmisión (linkOnline)',
+      );
+    }
+
+    if (!online && !ubicacionId) {
+      throw new BadRequestException(
+        'Un evento presencial requiere una ubicación. Activa "Evento online" solo si no tiene lugar físico.',
+      );
+    }
   }
 
   private validateLocalidades(localidades?: unknown[]) {
@@ -347,9 +465,106 @@ export class EventosService {
       throw new BadRequestException('Máximo 4 localidades por evento');
   }
 
+  private calcularAforoFinal(
+    aforo?: number,
+    localidades?: Array<{ nombre: string; aforo: number }>,
+  ): number {
+    if (aforo !== undefined) return aforo;
+    if (localidades && localidades.length > 0) {
+      return localidades.reduce((sum, loc) => sum + loc.aforo, 0);
+    }
+    return 1;
+  }
+
+  private validateAforoLocalidades(
+    aforoEvento: number,
+    localidades?: Array<{ nombre: string; aforo: number }>,
+  ) {
+    if (!localidades || localidades.length === 0) return;
+    const sumaAforos = localidades.reduce((sum, loc) => sum + loc.aforo, 0);
+    if (sumaAforos !== aforoEvento) {
+      throw new BadRequestException(
+        `La suma de aforos de las localidades (${sumaAforos}) debe ser igual al aforo total del evento (${aforoEvento})`,
+      );
+    }
+  }
+
   private validateCartelera(cartelera?: unknown[]) {
     if (!cartelera) return;
     if (cartelera.length > 5)
       throw new BadRequestException('Máximo 5 artistas en la cartelera');
+  }
+
+  private async assertMaxEventosActivos(userId: string) {
+    const result: Array<{ count: number }> = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS count FROM eventos
+       WHERE organizador_id = $1
+         AND estado NOT IN ('cancelado', 'finalizado')
+         AND deleted_at IS NULL`,
+      [userId],
+    );
+    if (result[0]?.count >= 5) {
+      throw new BadRequestException(
+        'Máximo 5 eventos activos por organizador. Cancela o finaliza uno para crear otro.',
+      );
+    }
+  }
+
+  private async assertMaxEventosTotal(userId: string) {
+    const result: Array<{ count: number }> = await this.dataSource.query(
+      `SELECT COUNT(*)::int AS count FROM eventos
+       WHERE creado_por = $1 AND deleted_at IS NULL`,
+      [userId],
+    );
+    if (result[0]?.count >= 5) {
+      throw new BadRequestException('Máximo 5 eventos en total por usuario.');
+    }
+  }
+
+  private async validateHorariosCartelera(
+    cartelera: unknown[] | undefined,
+    fechaInicio: string,
+    fechaFin: string,
+    excludeEventoId?: string,
+  ) {
+    if (!cartelera || cartelera.length === 0) return;
+
+    const artistas = (cartelera as Array<{ usuarioId?: string }>)
+      .map((a) => a.usuarioId)
+      .filter(Boolean);
+    if (artistas.length === 0) return;
+
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+
+    const conflictos: Array<{
+      titulo: string;
+      artista_id: string;
+      fecha_inicio: Date;
+      fecha_fin: Date;
+    }> = await this.dataSource.query(
+      `SELECT e.titulo, elem->>'usuarioId' AS artista_id,
+              e.fecha_inicio, e.fecha_fin
+       FROM eventos e,
+            jsonb_array_elements(e.usuarios_cartelera) AS elem
+       WHERE elem->>'usuarioId' = ANY($1)
+         AND e.estado NOT IN ('cancelado', 'finalizado')
+         AND e.deleted_at IS NULL
+         AND e.fecha_inicio < $3
+         AND e.fecha_fin > $2
+         ${excludeEventoId ? 'AND e.id != $4' : ''}`,
+      excludeEventoId
+        ? [artistas, inicio.toISOString(), fin.toISOString(), excludeEventoId]
+        : [artistas, inicio.toISOString(), fin.toISOString()],
+    );
+
+    if (conflictos.length > 0) {
+      const nombres = conflictos.map(
+        (c) => `"${c.titulo}" (artista ${c.artista_id})`,
+      );
+      throw new BadRequestException(
+        `Conflicto de horario con eventos: ${nombres.join(', ')}`,
+      );
+    }
   }
 }

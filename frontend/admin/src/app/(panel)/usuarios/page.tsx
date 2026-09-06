@@ -2,131 +2,135 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { formatDate } from '@/lib/format';
+import { EstadoBadge } from '@/components/ui/estado-badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { SelectField } from '@/components/ui/select-field';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import type { AdminUsuario, RolUsuario, EstadoUsuario } from '@/types';
 import {
-  Loader2,
-  Search,
-  ChevronDown,
-  AlertCircle,
-  Plus,
+  UserPlus,
+  Users,
+  Briefcase,
+  ShieldOff,
   Pencil,
   Trash2,
+  Loader2,
 } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { AdminUsuario } from '@/types';
-import { formatDate } from '@/lib/format';
-import { Modal } from '@/components/ui/modal';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
-import { cn } from '@/lib/utils';
-
-const rolStyles: Record<string, string> = {
-  admin: 'bg-[#EAF9E3] text-[#45B46A]',
-  organizador: 'bg-[#EAF9E3] text-[#45B46A]',
-  usuario: 'bg-white/10 text-white/70',
-  artista: 'bg-[#F9E3E8] text-[#B44561]',
-};
-
-const estadoStyles: Record<string, string> = {
-  activo: 'bg-[#EAF9E3] text-[#45B46A]',
-  suspendido: 'bg-[#F9E3E8] text-[#B44561]',
-  pendiente: 'bg-white/10 text-[#F4A261]',
-};
-
-const roleFilterOptions = ['Todos', 'admin', 'organizador', 'artista', 'usuario'];
-const estadoFilterOptions = ['Todos', 'activo', 'suspendido', 'pendiente'];
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('Todos');
-  const [estadoFilter, setEstadoFilter] = useState('Todos');
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [deletingUser, setDeletingUser] = useState<AdminUsuario | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const [filtroRol, setFiltroRol] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+
+  const [estadoLoadingId, setEstadoLoadingId] = useState<string | null>(null);
+  const [eliminarUsuario, setEliminarUsuario] = useState<AdminUsuario | null>(
+    null,
+  );
+  const [accionError, setAccionError] = useState('');
 
   useEffect(() => {
+    let active = true;
     api
-      .get<AdminUsuario[]>('/admin/usuarios')
-      .then(setUsuarios)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Error al cargar usuarios'),
-      )
-      .finally(() => setLoading(false));
-  }, []);
-
-  const filtered = useMemo(() => {
-    return usuarios.filter((u) => {
-      const matchesSearch =
-        u.nombreCompleto.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase());
-      const matchesRole = roleFilter === 'Todos' || u.rol === roleFilter;
-      const matchesEstado = estadoFilter === 'Todos' || u.estado === estadoFilter;
-      return matchesSearch && matchesRole && matchesEstado;
-    });
-  }, [usuarios, search, roleFilter, estadoFilter]);
+      .get<AdminUsuario[]>('/admin/usuarios?take=200')
+      .then((data) => {
+        if (active) setUsuarios(data);
+      })
+      .catch((err) => {
+        if (active) setError((err as Error).message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   const resumen = useMemo(() => {
-    const count = (fn: (u: AdminUsuario) => boolean) =>
-      usuarios.filter(fn).length;
-    return [
-      { label: 'Total', value: usuarios.length, change: 'Registrados', color: 'green' as const },
-      { label: 'Administradores', value: count((u) => u.rol === 'admin'), change: 'Cuentas', color: 'green' as const },
-      { label: 'Organizadores', value: count((u) => u.rol === 'organizador'), change: 'Cuentas', color: 'green' as const },
-      { label: 'Artistas', value: count((u) => u.rol === 'artista'), change: 'Cuentas', color: 'green' as const },
-      { label: 'Suspendidos', value: count((u) => u.estado === 'suspendido'), change: 'Bloqueados', color: 'red' as const },
-    ];
+    const total = usuarios.length;
+    const organizadores = usuarios.filter(
+      (u) => u.rol === 'organizador',
+    ).length;
+    const suspendidos = usuarios.filter(
+      (u) => u.estado === 'suspendido',
+    ).length;
+    return { total, organizadores, suspendidos };
   }, [usuarios]);
 
-  async function cambiarEstado(id: string, estado: string) {
-    setBusyId(id);
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return usuarios.filter((u) => {
+      if (filtroRol && u.rol !== filtroRol) return false;
+      if (filtroEstado && u.estado !== filtroEstado) return false;
+      if (
+        q &&
+        !`${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [usuarios, filtroRol, filtroEstado, busqueda]);
+
+  async function cambiarEstado(u: AdminUsuario, estado: EstadoUsuario) {
+    if (estado === u.estado) return;
+    setAccionError('');
+    setEstadoLoadingId(u.id);
     try {
-      await api.put(`/admin/usuarios/${id}/estado`, { estado });
-      setUsuarios((prev) =>
-        prev.map((u) =>
-          u.id === id
-            ? { ...u, estado: estado as AdminUsuario['estado'] }
-            : u,
-        ),
-      );
+      await api.put(`/admin/usuarios/${u.id}/estado`, { estado });
+      setRefreshKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al cambiar el estado');
+      setAccionError((err as Error).message);
     } finally {
-      setBusyId(null);
+      setEstadoLoadingId(null);
     }
   }
 
-  async function confirmarEliminacion() {
-    if (!deletingUser) return;
-    setDeleting(true);
-    setError('');
+  async function eliminar() {
+    if (!eliminarUsuario) return;
+    setAccionError('');
     try {
-      await api.delete(`/admin/usuarios/${deletingUser.id}`);
-      setUsuarios((prev) => prev.filter((u) => u.id !== deletingUser.id));
-      setDeletingUser(null);
+      await api.delete(`/admin/usuarios/${eliminarUsuario.id}`);
+      setEliminarUsuario(null);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al eliminar el usuario');
-      setDeletingUser(null);
-    } finally {
-      setDeleting(false);
+      setAccionError((err as Error).message);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-white/50" />
-      </div>
-    );
+  function iniciales(u: AdminUsuario) {
+    return `${u.nombre?.[0] ?? ''}${u.apellido?.[0] ?? ''}`.toUpperCase();
   }
+
+  const tarjetas = [
+    {
+      label: 'Usuarios totales',
+      valor: resumen.total,
+      icono: Users,
+      color: 'text-white',
+    },
+    {
+      label: 'Organizadores',
+      valor: resumen.organizadores,
+      icono: Briefcase,
+      color: 'text-[#45B46A]',
+    },
+    {
+      label: 'Suspendidos',
+      valor: resumen.suspendidos,
+      icono: ShieldOff,
+      color: 'text-[#B44561]',
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -136,203 +140,215 @@ export default function UsuariosPage() {
             Gestión de usuarios
           </h1>
           <p className="mt-1 text-sm text-white/50">
-            {usuarios.length} usuarios registrados en la plataforma
+            Revisa, aprueba y administra las cuentas del sistema.
           </p>
         </div>
-        <Link
-          href="/usuarios/nuevo"
-          className="inline-flex h-10 items-center justify-center rounded-md bg-white px-4 text-sm font-medium text-black transition-colors hover:bg-white/90"
-        >
-          <Plus className="h-4 w-4 mr-1" /> Nuevo usuario
+        <Link href="/usuarios/nuevo">
+          <Button className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Nuevo usuario
+          </Button>
         </Link>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="rounded-md border border-red-800 bg-red-950/60 p-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-4">
-        {resumen.map((stat) => (
-          <div key={stat.label} className="border border-white/10 rounded-lg p-5">
-            <p className="text-[#848484] text-xs uppercase tracking-wide font-medium">
-              {stat.label}
-            </p>
-            <p className="mt-1 text-[40px] font-medium text-white">{stat.value}</p>
-            <p
-              className={`mt-1 text-sm ${
-                stat.color === 'red' ? 'text-[#C04C4C]' : 'text-[#45B46A]'
-              }`}
-            >
-              {stat.change}
+      {accionError && (
+        <div className="rounded-md border border-red-800 bg-red-950/60 p-4 text-sm text-red-300">
+          {accionError}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        {tarjetas.map((t) => (
+          <div
+            key={t.label}
+            className="rounded-lg border border-white/10 bg-black/40 p-5"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-white/50">{t.label}</span>
+              <t.icono className={cn('h-5 w-5', t.color)} />
+            </div>
+            <p className="mt-2 font-clash text-3xl font-semibold text-white">
+              {t.valor}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="border border-white/10 rounded-lg overflow-hidden">
-        <div className="p-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/5 rounded px-3 py-2 flex-1 max-w-sm">
-              <Search className="h-4 w-4 text-white/50" />
-              <input
-                placeholder="Buscar usuarios..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-white text-sm outline-none placeholder:text-white/50 flex-1"
-              />
-            </div>
-            <div className="relative">
-              <select
-                value={estadoFilter}
-                onChange={(e) => setEstadoFilter(e.target.value)}
-                className="appearance-none bg-white/5 text-white text-sm rounded px-3 py-2 pr-8 border border-white/10 outline-none"
-              >
-                {estadoFilterOptions.map((o) => (
-                  <option key={o} value={o} className="bg-black">
-                    {o === 'Todos' ? 'Estado' : o}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
-            </div>
-            <div className="relative">
-              <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="appearance-none bg-white/5 text-white text-sm rounded px-3 py-2 pr-8 border border-white/10 outline-none"
-              >
-                {roleFilterOptions.map((o) => (
-                  <option key={o} value={o} className="bg-black">
-                    {o === 'Todos' ? 'Roles' : o}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-white/50 pointer-events-none" />
-            </div>
-            <button
-              onClick={() => {
-                setSearch('');
-                setRoleFilter('Todos');
-                setEstadoFilter('Todos');
-              }}
-              className="ml-2 text-xs text-white/50 transition-colors hover:text-white"
-            >
-              Limpiar filtros
-            </button>
-          </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="w-44">
+          <SelectField
+            label="Rol"
+            value={filtroRol}
+            onChange={(v) => setFiltroRol(v as RolUsuario | '')}
+            options={[
+              { value: '', label: 'Todos' },
+              { value: 'organizador', label: 'Organizadores' },
+              { value: 'usuario', label: 'Usuarios' },
+              { value: 'admin', label: 'Admins' },
+            ]}
+          />
         </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow className="border-white/10">
-              <TableHead className="text-[#848484] text-xs uppercase font-medium">USUARIO</TableHead>
-              <TableHead className="text-[#848484] text-xs uppercase font-medium">ROL</TableHead>
-              <TableHead className="text-[#848484] text-xs uppercase font-medium">REGISTRO</TableHead>
-              <TableHead className="text-[#848484] text-xs uppercase font-medium">ESTADO</TableHead>
-              <TableHead className="text-[#848484] text-xs uppercase font-medium">ACCIONES</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((u) => (
-              <TableRow key={u.id} className="border-white/10 hover:bg-white/5">
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center text-xs text-white font-medium">
-                      {u.nombreCompleto.charAt(0)}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white">{u.nombreCompleto}</p>
-                      <p className="text-xs text-white/50">{u.email}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                      rolStyles[u.rol] || 'bg-white/10 text-white/70',
-                    )}
-                  >
-                    {u.rol}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm text-white/70">
-                  {formatDate(u.createdAt)}
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
-                      estadoStyles[u.estado] || 'bg-white/10 text-white/70',
-                    )}
-                  >
-                    {u.estado}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={u.estado}
-                      disabled={busyId === u.id}
-                      onChange={(e) => cambiarEstado(u.id, e.target.value)}
-                      className="appearance-none bg-white/5 text-white text-sm rounded px-3 py-1.5 pr-7 border border-white/10 outline-none disabled:opacity-50"
-                    >
-                      <option value="activo" className="bg-black">Activo</option>
-                      <option value="suspendido" className="bg-black">Suspendido</option>
-                      <option value="pendiente" className="bg-black">Pendiente</option>
-                    </select>
-                    <Link
-                      href={`/usuarios/editar/${u.id}`}
-                      className="border border-white/10 rounded p-1.5 text-white/50 hover:text-white hover:bg-white/5 transition-colors"
-                      title="Editar"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                    <button
-                      onClick={() => setDeletingUser(u)}
-                      className="border border-white/10 rounded p-1.5 text-white/50 hover:text-red-400 hover:border-red-500/30 transition-colors"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filtered.length === 0 && (
-              <TableRow className="border-white/10">
-                <TableCell colSpan={5} className="text-center text-sm text-white/50 py-8">
-                  No se encontraron usuarios.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <div className="w-44">
+          <SelectField
+            label="Estado"
+            value={filtroEstado}
+            onChange={(v) => setFiltroEstado(v as EstadoUsuario | '')}
+            options={[
+              { value: '', label: 'Todos' },
+              { value: 'activo', label: 'Activos' },
+              { value: 'suspendido', label: 'Suspendidos' },
+              { value: 'inactivo', label: 'Inactivos' },
+            ]}
+          />
+        </div>
+        <div className="flex-1 min-w-52">
+          <Input
+            id="buscar-usuarios"
+            placeholder="Buscar por nombre o email..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+        </div>
       </div>
 
-      <Modal
-        open={deletingUser !== null}
-        onClose={() => setDeletingUser(null)}
+      <div className="overflow-hidden rounded-lg border border-white/10">
+        <table className="w-full text-sm text-white">
+          <thead className="border-b border-white/10 bg-white/5">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
+                Usuario
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
+                Email
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
+                Registro
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
+                Rol
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
+                Estado
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-white/50">
+                Acciones
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-16 text-center text-white/50">
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin" />
+                </td>
+              </tr>
+            ) : filtrados.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-16 text-center text-white/50">
+                  No hay usuarios con estos filtros
+                </td>
+              </tr>
+            ) : (
+              filtrados.map((u) => (
+                <tr
+                  key={u.id}
+                  className="border-b border-white/5 last:border-0 hover:bg-white/5"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {u.fotoPerfilUrl ? (
+                        <img
+                          src={u.fotoPerfilUrl}
+                          alt=""
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white/70">
+                          {iniciales(u)}
+                        </div>
+                      )}
+                      <span className="font-medium">{`${u.nombre} ${u.apellido}`.trim()}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-white/70">{u.email}</td>
+                  <td className="px-4 py-3 text-white/50">{formatDate(u.createdAt)}</td>
+                  <td className="px-4 py-3">
+                    <EstadoBadge value={u.rol} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {estadoLoadingId === u.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-white/40" />
+                    ) : (
+                      <select
+                        value={u.estado}
+                        onChange={(e) =>
+                          cambiarEstado(u, e.target.value as EstadoUsuario)
+                        }
+                        className={cn(
+                          'cursor-pointer rounded-md border border-white/10 bg-transparent px-2 py-1 text-xs',
+                          u.estado === 'activo'
+                            ? 'text-[#45B46A]'
+                            : u.estado === 'suspendido'
+                              ? 'text-[#B44561]'
+                              : 'text-white/50',
+                        )}
+                      >
+                        <option value="activo" className="bg-black text-white">
+                          Activo
+                        </option>
+                        <option value="suspendido" className="bg-black text-white">
+                          Suspendido
+                        </option>
+                        <option value="inactivo" className="bg-black text-white">
+                          Inactivo
+                        </option>
+                      </select>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        title="Editar"
+                        href={`/usuarios/editar/${u.id}`}
+                        className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                      <button
+                        title="Eliminar"
+                        className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-[#B44561]"
+                        onClick={() => setEliminarUsuario(u)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <ConfirmDialog
+        open={Boolean(eliminarUsuario)}
         title="Eliminar usuario"
-        maxWidth="max-w-md"
-      >
-        <p className="text-sm text-white/70">
-          ¿Seguro que deseas eliminar a{' '}
-          <span className="text-white">{deletingUser?.nombreCompleto}</span>? Esta
-          acción lo desactiva de la plataforma.
-        </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => setDeletingUser(null)}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={confirmarEliminacion} disabled={deleting}>
-            {deleting ? 'Eliminando...' : 'Eliminar'}
-          </Button>
-        </div>
-      </Modal>
+        description={
+          eliminarUsuario
+            ? `¿Deseas eliminar la cuenta de ${eliminarUsuario.nombre} ${eliminarUsuario.apellido}?`
+            : ''
+        }
+        confirmLabel="Eliminar"
+        loading={Boolean(estadoLoadingId)}
+        onClose={() => setEliminarUsuario(null)}
+        onConfirm={eliminar}
+      />
     </div>
   );
 }

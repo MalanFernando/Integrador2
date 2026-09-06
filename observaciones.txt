@@ -1,0 +1,200 @@
+lo que no debemos hacer en reservas es:
+Crear reservas para usuarios, solo a menos que este fallando algo en el sistema y tengamos que hacerlo manual, pero seria una excepcion.
+Modificar arbitrariamente la cantidad de tickets.
+Marcar cualquier ticket como verificado sin justificación.
+Administrar la entrada de asistentes de cada evento como actividad cotidiana.
+
+
+* Agregar una verificacion o necesito una sugerencia para la verificacion de datos de pago en el formulario para crear evento de pago, yo tenia la idea de pedir una foto de la cedula para verificar sus datos y asi evitar estafas.
+
+
+
+
+
+SEPARACION DE DOMINIOS DE LA PLATAFORMA DE ACUERDO AL TIPO DE USUARIO:
+Usuario comun/normal: dominio por defecto(comun) puede navegar sin estar registrado o sin iniciar session y cuando inicie seion seguira siendo el mismo dominio.
+Usuario tipo organizador: se abre otra pestaña del navegador con el nombre de dominio que se le asigna, este puede cambiarlo para hacerlo personalizado(no como tal su nombre de dominio si no el nombre del enlace, como lo hace buen plan, ejemplo: https://www.buenplan.com.ec/host/[Nombre personalizable]).
+El organizador tiene un menu interno desde su perfil de usuario, el que tiene las opciones de: Eventos, reseñas, miembros, reservaciones, configuración.
+* tanto el usuario normal como el organizador pueden cambiar de perfil cuando deseen.
+
+
+
+
+FLUJO DE LA PLATAFORMA (USUARIO NORMAL sin iniciar session o sin registro en la plataforma)
+- Nav: logtipo, Home, Mapa, Explorar, boton de crear evento, boton de "Iniciar sesion".
+- Seccion Home: lo primero que el un usuario sin registrarse vera sera el home de la plataforma en donde Habra informacion acerca de la plataforma, un titulo, algunos componentes que tendran informacion propia de la plataforma como por ejemplo: un slider con las categorias existentes en la plataforma(comedia, teatro, cine, feria, concierto, social, etc)---> esto se obtiene de la lista de categorias que se encuentra en la base de datos. Otra seccion que tendra la home sera 4 cards de eventos destacados que al dar clic se pueda dirigir al detalle de esos eventos, asi que esas card igual son sacadas de la base de datos, se obtendra los destacados de acuerdo a la popularidad de los mismo(como el numero de guardados o vistas que tenga). Otra seccion que tendra la home sera un slider con los logotipos o nombres si no existe el logotipo de la organizacion, estos logotipos igual seran sacados de la DB de las imagenes de los usuarios tipo organizador.
+- Seccion Mapa: el usuario tendra acceso a la seccion de mapa y las funciones de este apartado como son: filtrar eventos por nombre,artista, nombre del organizador(Aqui aparece el evento que pertence a ese organizador mas no una card con el perfil del organizador), ubicacion/lugar; filtrar por distancia; filtrar por precio(free, y el rango de precios que se detecten de acuerdo a los eventos registrados); filtro por fecha; sort(alfabetico a-z ; z-a); filtro por categorias(listado de categorias). Al dar click en boton que se encuentra sobre puesto en la esquina del mapa se habre una ventana tipo sidebar en donde se mostraran los resultados de los filtros o si no se filtro nada se mostraran los eventos cercanos a la ubicacion(rango de 5km) del usuario,se mostrara el numero de eventos encontrados cerca. Al dar clic en un evento de esa lista salta una card con mas detalles del evento y un boton que indica (ver rutas), al dar clic en ver rutas muestra las rutas en el sugeridas con los filtros (todos, a pie, vehiculo, sort(ruta rapida, menos tiempo)), al dar clic en el detalle de una ruta muestra las acciones que debera hacer el usuario como(girar, recto, dar vuelta, etc), ademas muestra el tiempo calculado de acuerdo a la ubicacion del usuario y el punto del evento, muestra la via o calle principal por la cual se ira. al igual esta ruta podra ser compartida para que lo use mediante otra aplicacion externa.
+- Seccion explorar: en este apartado el usuario podra ver un slider de eventos populares, que tiene informacion como: Titulo del evento, fecha y hora, descripcion, logo del organizador o en su defecto el nombre del organizador, las redes sociales del organizador y la imagen del evento. En este apartado el usuario Tambien tendra los mismos filtros que se uso para la seccion de mapa, pero aqui se muestra un grid con todos los eventos de la plataforma. Al dar clic en un evento los llevara al detalle del evento en donde existe la siguiente informacion:
+un slider de las imagenes o en su defecto de la imagen del evento, el tituo del evento, una etiqueta del evento, el nombre de la ubicacion, fecha y hora, un boton con la ubicacion del evento para redirigir al mapa de la plataforma, restriccion de acceso, descripcion del evento, una card con el perfil del organizador(nombre del organizador, followers, eventos, score, logotipo, redes sociales, boton de seguir), artistas del cartel del evento(perfiles con el boton de seguir o si no tiene un perfil, en la tabla de crear evento se hizo una opcion para subir un link de una red social o algo para asi crear un boton que diga visitar), preguntas frecuentes, localidades.
+
+- Boton de crear evento: al dar clic los llevara al login el cual pueden registrarse o iniciar mediante google o con correo electronico real. una vez registrado e iniciado session este se habilitara como usuario organizador ya que presiono el boton de crear evento, sin embargo al usuario se le indicara mediante una notificacion (popup)rapida que puede cambiar de usuario a organizador desde el boton del perfil que se encuentra en el nav.
+-Boton inciar session: al dar clic los lleva al login para iniciar session mediante correo electronico real o mediante google, en el caso de no tener cuenta puede registrarse con su correo real o de igual forma mediante google. Una vez iniciado session este ingresa como usuario normal(puede realizar todas las acciones y visitar todas las secciones, ademas puede desde su perfil cambiar al modo organizador).
+
+
+
+
+
+FLUJO DE LA PLATAFORMA (USUARIO registrado y logged en la plataforma desde el boton "iniciar session"):
+- si dio clic solo en iniciar session o registrarse normalmente se creara un perfil de usuario comun.
+Tiene el mismo flujo como si no estuviera iniciado session ya que puede navegar por: Home, Mapa, Explorar.
+- Nav: una vez iniciado session este tendra las opciones de Home, Mapa, Explorar, un boton de crear evento, boton con el icono de campana de notificaciones(Junto a este un boton con la foto de perfil del usuario(si no tiene foto de perfil estaran sus iniciales de nombre y apellido) junto con su nombre, al hacer clic se depliega opciones de accion rapida como: ver perfil, modo organizador, eventos guardados, cerrar session).
+- Perfil: foto de perfil, portada, nombre, bio, followers, following, saved(numero de eventos guardados), boton de editar perfil, boton de compartir perfil, redes sociales. 
+En la parte inferior hay un menu con las opciones de: 
+	- Eventos guardados: lista de eventos guardados tipo cards(igual a los que estan en la seccion explorar de la plataforma).
+	- Mis reservaciones: Aparece una lista de reservaciones hechas por el usuario, cada reservacion tiene un boton en la esquina superior(son 3 puntos) en donde tiene la opcion de reportar algun error o inconveniente, al hacer eso se habre una ventana emergente en donde debe ingresar el motivo del reporte. Al presionar en una reservacion se va al apartado del detalle de reserva en donde esta la informacion como: informacion del evento(titulo, fecha, ubicacion, imagen del evento), numero con fecha de la orden generada, QR, un boton para ver el receipt de la reserva, un boton para reportar(aqui si se da clic se debe ingresar el motivo del reporte).
+	- Eventos participante: (Este apartado es para los usuarios que formen parte como artistas en la cartelera de un evento) ---> en este apartado las cards son un tanto diferentes(horizontales) ya que se muestra la informacion del evento como: titulo, fecha, tipo de evento(free, pagado) y Tambien muestra el valor el evento, por ejemplo si es gratis dira: desde $0.00 ; si es pagado dira: desde $"el monto minimo de ese evento".
+	- Configuracion: este apartado tiene: activar o desactivar notificaciones(Event alerts & reminders, Following and followers, Email notificaciones, listed as a guest artist), cambiar contraseña(les lleva a otra pagina en donde se debe ingresar el correo para enviar un mensaje de crear nueva contraseña), eliminar cuenta(eliminación lógica, solo el superadmin puede ver este perfil, sin embargo pasado 90 días este perfil se borrara y todo lo relacionado a este)
+- Editar pefil: se puede editar los siguientes campos del perfil: foto de perfil, portada, nombre, apellido, numero de telf(este solo es visible en el panel administrativo para el Admin del sistema, que servira como informacion de contacto), agregar etiqueta(puede ser: artista, comediante, etc.), Bio(descripcion), redes sociales.
+
+	
+
+
+FLUJO DE LA PLATAFORMA (USUARIO TIPO ORGANIZADOR)
+Este usuario no tiene la misma navegacion por la plataforma que el usuario normal tiene, ya que no tiene mapa ni explorar, ni home.
+- Nav: una vez iniciado session como organizador este tendra las opciones de:logotipo(este no tiene un link hacia ningun lado, solo es visual), un boton de crear evento, boton con el icono de campana de notificaciones(Junto a este un boton con la foto de perfil del usuario(si no tiene foto de perfil estaran sus iniciales de nombre y apellido) junto con su nombre, al hacer clic se depliega opciones de accion rapida como: cambiar de modo(usuario normal), cerrar session).
+- Perfi:  foto de perfil/logotipo, portada, nombre, ubicacion, bio, followers, following, score, boton de editar perfil, boton de compartir perfil, redes sociales. gestiona las acciones de acuerdo a un menu inferior interno con las opciones de :
+	- Eventos: administrar los eventos(crear, editar, publicar, ocultar, eliminar(eliminado solo para el usuario, pero este evento existe como registro para el usuario superadmin del sistema y podra visualizarlo en el panel administrativo), ver estadisticas de cada evento(Aqui hay estadisticas como: Ubicacion - actualizado fecha y hora, filtro por(este mes, esta semana, hoy, o fecha especifica mediante calendario), boton de generar reporte. Hay numeros totales como: numero de reservas, numero de vistas, numero de reseñas, numero de guardados. Bajo esto hay una grafica tipo dona de estado de Reseñas(muestra el numero de Reseñas y sus puntuaciones), y un grafico tipo barras de localidades(con el numero de reservas y el tipo de localidades))).
+	- Reseñas: Nos muestra el score que tenemos basado calculo de la calificacion de las opiniones de los usuarios, tenemos un buscador (filtra por nombre, usuario, nombre de evento), boton de filtrar por estado, filtrar por puntuacion, un sort(alfabetico a-z; z-a). el organizador puede visitar el perfil del usuario que dio la reseña dando clic en el perfil de ese usuario, esta accion haria que se habra otra pestaña del navegador en la que se cambie de perfil organizador a perfil usuario normal para poder visitar ese perfil.
+	- Miembros: muestra el nombre organizador(o sea su propio nombre de usuario y como rol: Admin), tiene un boton para crear miembros de tipo(editor(similar a un admin pero limitado ya que no puede eliminar, solo editar los eventos, la acion de reportar una reseña y tambien reportar una reservacion. este no puede editar el perfil del organizador), moderador(solo para gestionar las reseñas(reportar), tambien puede visualizar los demas apartados pero no puede hacer acciones como editar)). Si este usuario organizador es miembro de otro organizador le aparece en la parte inferior una card con su foto de perfil, su nombre, el tipo de miembro(editor, moderador) y una opcion en la esquina superior para(darse de baja).
+Para crear un miembro el formulario es simple: mediante un buscador se puede buscar un usuario que exista en la plataforma, seleccionarlo y mediante un boton se le envia una notificacion para que acepte ser miembro.
+Si el usuario no existe en la plataforma, se puede llenar un formulario con el correo y el rol asignado y al guardar los cambios se envia un correo para que pueda registrarse en la plataforma y asi una vez detectado que se registro con ese correo se le asigna como miembro de esa organizador(si no se registra con ese correo no pasaria nada solo no se agregaria como miembro y tendrian que hacer el proceso manualmente para agregarlo).
+	- Reservaciones: Busqueda por nombre del evento, numero de reservas, filtro por tipo(free, pagada), filtrar por fecha, sort(alfabetico a-z; z-a).
+Al dar clic en un evento de las reservaciones nos lleva a un apartado en donde hay un boton para generar un reporte de ese evento de acuerdo a las reservaciones, en la parte inferior hay una lista de asitentes en donde se puede filtrar: busqueda por nombre de usuario, correo; boton de filtro de localidad; filtro de estado de la reserva, filtro de fecha de emision. las acciones que se pueden hacer con una reservacion es eliminar reserva, siempre y cuando se diga el motivo obligatoriamente debe decir el motivo de eliminacion(puede ser por duplicado sin querer, tiene un error en la localidad, etc), otra accion es reportar un error en una reservacion.
+	- Configuracion: este apartado tiene: activar o descativar notificaciones(Event alerts & reminders, Following and followers, Email notificatios, listed as a guest artist), cambiar contraseña, eliminar cuenta(eliminación lógica, solo el superadmin del sistema puede ver este perfil, sin embargo pasado 90 días este perfil se borrara y todo lo relacionado a este).
+- Editar pefil: foto de perfil, foto de portada, nombre, apellido, numero de contacto, descripcion, el nombre de dominio que se le asigna, este puede cambiarlo para hacerlo personalizado(no como tal su nombre de dominio si no el nombre del enlace, como lo hace la plataforma de "buenplan", ejemplo: https://www.buenplan.com.ec/host/[Nombre personalizable]), redes sociales, ubicacion.
+
+
+
+FLUJO DE LA PLATAFORMA (USUARIO NORMAL VISITANDO UN PERFIL DE OTRO USUARIO)
+a este se le indicara mediante una notificacion(popup) rapida que se puede cambiar a usuario normal dando clic en el boton de perfil que esta en el nav.
+
+Este flujo es simple ya que se puede ver un perfil de otro usuario y se vera lo siguiente: la foto de perfil, la portada, nombre, bio, seguidores, following, guardados, un boton de follow para poder seguirlo, un boton para compartir ese perfil, redes sociales.
+en la parte inferior tendra un menu con opciones como: 
+	- Eventos guardados por ese usuario(son las mismas cards de las seccion explorar de la plataforma).
+	- Eventos participante(Este apartado es para los usuarios que formen parte como artistas en la cartelera de un evento) ---> en este apartado las cards son un tanto diferentes ya que se muestra la informacion del evento como: titulo, fecha, tipo de evento(free, pagado) y Tambien muestra el valor el evento, por ejemplo si es gratis dira: desde $0.00 ; si es pagado dira: desde $"el monto minimo de ese evento". Si no pertenece a una cartelera de un evento solo estara vacia nada mas(con un mensaje que diga nadie te ha invitado a ser parte de un evento (y una carita triste)).
+
+
+
+FLUJO DE LA PLATAFORMA (USUARIO NORMAL VISITANDO UN PERFIL DE ORGANIZADOR)
+Este flujo es interesante ya que el usuario normal puede visitar el perfil de un usuario de tipo organizador en donde se vera lo siguiente:
+Foto de perfil, la portada, nombre, ubicacion, bio, seguidores, following, score, un boton de follow, un boton para compartir ese perfil, redes sociales.
+en la parte inferior tendra un menu con opciones como:
+	- Proximos eventos: un grid con los eventos mas recientes publicos.
+	- Eventos pasados: eventos que ya pasaron de acuerdo a la fecha de ese dia de consulta.
+	- Reseñas: En este apartado se muestra el score del organizador que se calcula de acuerdo a la calificación de las opiniones de los usuarios. además hay un botón para que los usuarios que visiten ese apartado puedan crear su propia reseña, en la parte inferior hay un listado de reseñas de los usuarios.
+Una reseña tiene lo siguiente:
+fecha de publicación, el perfil del usuario que publico dicha reseña, un puntaje dado por el usuario que creo la reseña, nombre del evento, comentario acerca de ese evento. Asi mismo para crear una reseña los campos son: escojer un evento de acuerdo a los que tenga ese perfil de organizador, elegir una calificacion que viene del 0 al 5, y agregar un comentario y finalmente dar en el boton publicar.
+
+
+
+
+FLUJO DEL PANEL ADMINISTRATIVO (SUPERADMIN)
+Este debe iniciar sesion primero o registrarse estrictamente solo con correo electronico real.
+una vez inicia session se abre el dashboard del panel administrativo, el logo en la parte superior izquierda, un header a modo de nav con un boton para crear un evento rapido(esto como admin serviria bien), junto a este boton un icono de campana para ver las notificaciones y junto a este icono la foto del perfil del usuario junto con su nombre que al dar clic se despliegan las opciones de(editar perfil, cerrar sesion); Despues tenemos un menu lateral con las opciones:
+	- Dashboard: Resumen de la plataforma con (ubicacion, fecha, hora), filtro por(este mes, esta semana, hoy, o fecha especifica mediante calendario), boton de generar reporte.
+Hay numeros totales como: eventos, usuarios, organizadores, categorias, pendientes/revision.
+grafica de eventos por categoria, actividades recientes(de todos los usuarios de la plataforma, incluyendo superadmin), lista de eventos que requieren atencion(pendientes o con problemas), grafica con el estado de organizadores, lista de eventos reservados. 
+	- Reportes: aun por definir pero este apartado es para generar reportes de todas las opciones del panel, inclusive reportes de cada perfil de usuario.
+	- Usuarios: gestion de usuarios, nos muestra el numero total de usuarios de la plataforma(incluyendo admin o usuarios inactivos); un boton para generar un reporte de usuarios; un boton para crear un nuevo usuario; Hay numeros totales como: usuarios activos, usuarios de tipo organizadores, usuarios tipo admin, usuarios inactivos, usuarios suspendidos. en la parte inferior hay filtros: buscador(por nombre, correo), boton de filtrar por estado, rol, sort(alfabeticamente(a-z ; z-a)); mas abajo se encuentra una tabla con la lista de usuarios de la plataforma, los nombres de las columnas son: usuario(es un mini perfil con: la foto de perfil, nombre y correo), rol, registro(fecha de registro), estado(activo, inactivo/suspendido, eliminado), actividad(ultima hora/fecha de actividad en la plataforma), acciones(cada registro tiene un boton de acciones que son: editar perfil, activar, inactivo/suspender, eliminar(eliminado logico, solo es visual para el usuario)). 
+	Al dar clic en crear usuario nos lleva al apartado de crear usuario, en donde al principio hay un boton de seleccionar el rol(admin, organizador, usuario(comun)). 
+		Si selecciona "usuario organizador" Los campos del formulario son: Datos personales[foto de perfil, foto de portada, nombre, apellido, numero de contacto, correo(obligatorio), nombre de usuario(este nombre es el que se vera en el perfil, ejemplo: casa de la cultura, fundacion, etc), descripcion(bio)]; Accesos y permisos[contraseña, repetir contraseña, estado(activo, inactivo)]; Social media, son 5 links:[sitio web, instagram, facebook, tiktok, otro link de lo que sea]; Dominio[nombre de dominio que se le asigna, este puede cambiarlo para hacerlo personalizado(no como tal su nombre de dominio si no el nombre del enlace, como lo hace la plataforma de "buenplan", ejemplo: https://www.buenplan.com.ec/host/[Nombre personalizable])]; Ubicacion[un buscador de ubicaciones que sirve en conjunto con un mini mapa para seleccionar la ubicacion, o puede llenar los campos: Direccion(calles), ciudad o localidad, nombre del lugar(teatro, centro de convenciones, coliseo, etc)]; Miembros[mediante un buscador se puede buscar un usuario que exista en la plataforma, seleccionarlo y mediante un boton "notificar" se le envia una notificacion para que acepte ser miembro.
+Si el usuario no existe en la plataforma, se puede llenar un formulario con el correo y el rol asignado y al guardar los cambios se envia un correo para que pueda registrarse en la plataforma y asi una vez detectado que se registro con ese correo se le asigna como miembro de esa organizador(si no se registra con ese correo no pasaria nada solo no se agregaria como miembro y tendrian que hacer el proceso manualmente para agregarlo).]
+		Si selecciona "Admin" los campos del formulario son: Datos personales[foto de perfil, nombre, apellido, numero de contacto, correo(obligatorio)]; Accesos y permisos[contraseña, repetir contraseña, estado(activo, inactivo)];
+		Si selecciona "usuario(normal)" los campos del formulario son: Datos personales[foto de perfil, foto de portada, nombre, apellido, numero de contacto, correo(obligatorio), agregar etiqueta(ejemplo: artista, cantante, blogger, etc), descripcion(bio)]; Accesos y permisos[contraseña, repetir contraseña, estado(activo, inactivo)]; Social media, son 5 links:[sitio web, instagram, facebook, tiktok, otro link de lo que sea].
+	- Organizadores: gestion de organizadores, nos muestra el numero total de usuarios tipo organizador de la plataforma(incluyendo usuarios inactivos o eliminados(eliminado logico)); un boton para generar un reporte; un boton para crear un nuevo organizador; Hay numeros totales como: organizadores activos, organizadores inactivos, organizadores nuevos, organizadores eliminados. en la parte inferior hay filtros: buscador(por nombre, correo), boton de filtrar por estado, numero de eventos, sort(alfabeticamente(a-z ; z-a)); mas abajo se encuentra una tabla con la lista de organizadores de la plataforma, los nombres de las columnas son: organizador(foto del pefil del organizador, nombre de usuario, correo/ubicacion), Responsable(el nombre y apellido del usuario), eventos(numero de eventos de cada organizador), miembros(numero de miembros de cada organizador), estado(activo, inactivo/suspendido, eliminado), acciones(cada registro tiene un boton de acciones que son: editar perfil de organizador, activar, inactivo/suspender, eliminar(eliminado logico, solo es visual para el usuario organizador)).
+		Al dar clic en crear organizador me lleva a un apartado para crear un usuario de tipo organizador, Los campos del formulario son: Un buscador para si solo se quiere buscar por nombre o correo y asignar un usuario de la plataforma y asi se le notifica a ese usuario que tiene una cuenta como organizador, si no existe hay un enlace rapido que nos lleva a crear un usuario y seria el formulario de crear usuario; despues tenemos: Datos personales[foto de perfil, foto de portada, nombre, apellido, numero de contacto, correo(obligatorio), nombre de usuario(este nombre es el que se vera en el perfil, ejemplo: casa de la cultura, fundacion, etc), descripcion(bio)]; Accesos y permisos[contraseña, repetir contraseña, estado(activo, inactivo)]; Social media, son 5 links:[sitio web, instagram, facebook, tiktok, otro link de lo que sea]; Dominio[nombre de dominio que se le asigna, este puede cambiarlo para hacerlo personalizado(no como tal su nombre de dominio si no el nombre del enlace, como lo hace la plataforma de "buenplan", ejemplo: https://www.buenplan.com.ec/host/[Nombre personalizable])]; Ubicacion[un buscador de ubicaciones que sirve en conjunto con un mini mapa para seleccionar la ubicacion, o puede llenar los campos: Direccion(calles), ciudad o localidad, nombre del lugar(teatro, centro de convenciones, coliseo, etc)]; Miembros[mediante un buscador se puede buscar un usuario que exista en la plataforma, seleccionarlo y mediante un boton "notificar" se le envia una notificacion para que acepte ser miembro.
+Si el usuario no existe en la plataforma, se puede llenar un formulario con el correo y el rol asignado y al guardar los cambios se envia un correo para que pueda registrarse en la plataforma y asi una vez detectado que se registro con ese correo se le asigna como miembro de esa organizador(si no se registra con ese correo no pasaria nada solo no se agregaria como miembro y tendrian que hacer el proceso manualmente para agregarlo).]
+	- Eventos: gestion de eventos, nos muestra el numero total de eventos de la plataforma(incluyendo inactivos o eliminados(eliminado logico)) y en revision; un boton para generar un reporte; un boton para crear un nuevo evento; Hay numeros totales como: eventos activos, eventos inactivos, eventos en revision, eventos eliminados, eventos reportados. en la parte inferior hay filtros: buscador(por nombre del evento, nombre del organizador), boton de filtrar por categoria, por estado, fecha(un calendario para seleccionar la fecha), sort(alfabeticamente(a-z ; z-a)); mas abajo se encuentra una tabla con la lista de organizadores de la plataforma, los nombres de las columnas son: evento(foto miniatura del evento, nombre del evento, ubicacion), organizador(el nombre y apellido del usuario organizador), fecha(fecha y hora de creacion del evento), estado(activo, inactivo/suspendido, eliminado, aprobado, en revision), acciones(cada registro tiene un boton de acciones que son: editar evento, activar, inactivo/suspender, eliminar(eliminado logico, solo es visual para el usuario organizador), revisar, aprobar).
+	Al dar clic en crear evento me lleva a un apartado para crear un evento nuevo, Los campos del formulario son: Un buscador para buscar por nombre o correo y asignar un usuario tipo organizador de la plataforma y asignarle ese evento, si no esta registrado o no aparece en la plataforma se debe crear una cuenta, bajo de este buscador hay un enlace rapido que nos lleva a crear un usuario y seria el formulario de crear usuario; despues tenemos: [
+Datos generales
+- Imagen de portada (imagen, max 3 imágenes, max 2MB c/u, resolución: 1080x1200, formatos: jpg, png, jpeg, webp)
+- Nombre del evento *
+- Categoría * (dropdown)
+- Clasificación de edad (dropdown: Todo público)
+- Agregar etiqueta (ej: musica, concierto, danza)
+- Fecha y hora de inicio *
+- Fecha y hora de finalización *
+- Aforo (numérico, default: 1)
+- Visibilidad (dropdown: Público)
+- Descripción * (max 500 caracteres)
+
+### Modalidad
+- Evento online (toggle)
+
+### Ubicación
+- Búsqueda de dirección en mapa
+o podemos ingresar:
+	- Dirección
+	- Ciudad o localidad
+	- Nombre del lugar
+
+### Artistas en cartelera (opcional)
+- Búsqueda de usuario registrados en la plataforma
+Si no existe en la plataforma se llenan los campos:
+	- Nombre del artista
+	- Link de red social, web externa, etc ---> esto crea un boton que dira visitar
+
+### Localidades (sección repetible)
+- Nombre de localidad (ej: VIP)
+- Aforo	
+- Precio
+Ademas cada localidad tiene un boton de eliminar por si no desean esa localidad
+
+### Evento gratuito (toggle) ---> si seleccionan esta opcion se deshabilita la informacion de pago
+
+### Información de pago * (se muestra si no es gratuito)
+- Nombre del destinatario
+- Número de contacto de pago
+- Número de cuenta bancaria
+- Tipo de cuenta (dropdown: Ahorros)
+- Número de cédula
+
+### Preguntas frecuentes (sección repetible)
+- Título de la pregunta
+- Respuesta (max 500 caracteres), Ademas de un boton de eliminar para cada pregunta creada.]
+
+	- Reseñas:  gestion de reseñas, nos muestra un texto"Revisión y gestión de comentarios publicados por usuarios"; un boton para generar un reporte; Hay numeros totales como: total de reseñas, reseñas nuevas, reseñas reportadas, reseñas eliminados. en la parte inferior hay filtros: buscador(por nombre de usuario, nombre de evento), boton de filtrar por estado, ountuacion de la reseña, fecha; mas abajo se encuentra una tabla con la lista de reseñas de la plataforma, cada card de reseña tienen un boton de acciones: revisar; eliminar(eliminado logico solo para el usuario organizador y para el usuario que creo la reseña).
+	- Reservaciones: gestion de reservaciones, nos muestra el numero total de reservaciones validas de la plataforma; un boton para generar un reporte; Hay numeros totales como: Total de reservas, reservas nuevas, reseras reportadas, reservas eliminadas. en la parte inferior hay filtros: buscador(por nombre el evento, nombre del organizador), boton de filtrar por estado, numero de reservas, fecha, sort(alfabeticamente(a-z ; z-a)); mas abajo se encuentra una tabla con la lista de eventos con suinformacin de reservas de la plataforma, los nombres de las columnas son: evento(foto miniatura del evento, nombre del evento, ubicacion), organizador(el nombre y apellido del usuario organizador), fecha(fecha y hora de creacion del evento), reservas(numero de reservas de ese evento), estado(activo, inactivo/suspendido, eliminado, aprobado, en revision), acciones(cada registro tiene un boton de acciones que son: ver lista de reservas(para ese evento), revisar evento). Al dar clic en ver lista de reservas me lleva al apartado de la lista de asistentes(personas que reservaron ese evento); hay un boton para generar reporte, hay una card con la informacion del evento(imagen del evento en miniatura, titulo, fecha y lugar, ademas el numero de reservas validasde ese evento); en la parte inferior tenemos numeros totales como: total de reservas(incluyendo eliminadas o reportadas), validas, localidades, reportadas, eliminadas; Despues tenemos los filtros: buscador(por nombre de usuario, correo), boton de filtrar por localidad, estado, fecha de emision; mas abajo se encuentra una tabla con la lista de usuarios asistentes, los nombres de las columnas son: nombre y correo(foto miniatura del usuario, nombre y correo), fecha de emision de la reservacion, fecha de ingreso del usuario a la plataforma, localidad(es la localidad seleccionada al hacer la reserva), estado, acciones(Revisar, Eliminar(eliminado logico solo para los usuarios)).
+	- Categorías: Aun por definir, pero debe ser un apartado sencillo, (por ejemplo mostrar las categorias creadas, un boton para crear una nueva, cada una con un boton(de 3 puntos) para editar o eliminar esa categoria). Ya que se crearan las categorias que aparecen al crear un evento(Tambien Habra una opcion en el dropdown para si quiere ingresar una categora que no este en la lista). El formulario debe ser sencillo como solo poner un nombre de categoria. ---> si existe algo adicional hazmelo saber.
+	- Registro: Este apartado es el registro de todas las acciones que realizan los usuarios(admin, organizadores, usuarios comunes)--> obviamente todos los que esten registrados y tengan iniciado session; Aqui hay un boton para generar un informe general, los numeros que muestra son: total de registros, usuarios activos, acciones reportadas, acciones en revision, Eliminados o reportados; en la parte inferior tenemos los filtros: Busqueda(nombre de usuario, correo), boton para filtrar por tipo de usuario, estado, accion(accion administrativa o de un usuario en la plataforma), por fecha; mas abajo se encuentra una tabla con la lista de usuarios, los nombres de las columnas son: nombre (foto miniatura del usuario, nombre y correo), tipo(admin, organizador, usuario comun), fecha de ultima accion del usuario en la plataforma, descripcion(accion realizada por el usuario en la plataforma, ejm: (Accion 
+administrativa:Nombre referencia de la acción)), estado(activo,inactivo, eliminado).
+	- Configuración: por definir, pero son configuraciones internas del sistema que aun se esta por revisar, pero si existe alguna sugerencia de acuerdo al contexto hazmelo saber.
+	- Cerrar sesión: solo se cierra session(si hay alguna accion pendiente se da un aviso para terminarlo o se cancelara).
+
+
+
+OBERVACIONES ADICIONALES:
+
+
+usuario comun es solo una forma de identificar a un usuario "general" no quiero que "usuario comun" se refleje en el desarrollo(codigo)
+
+de alguna manera el numero de celular que ingresa el usuario comun y para el usuario tipo orgnanizador debe servir al Admin del sistema para poder enviar reportes personalizados a ese numero, promociones, anuncios o algo que nos permita hacer ese numero de celular funcional.
+
+
+(recordar que estas localidades funcionan cuando el evento es pagado y ha llenado el formulario de informacion de pago que es obligatoria para los eventos de pago, asi se habilita el boton de WhatsApp para crear los mensajes personalizados de acuerdo a la localidad seleccionada y si da clic en el boton de WhatsApp se abre la aplicacion y se envia el mensaje con los datos del usuario y la localidad seleccionada, asi el organizador puede enviar los datos para que se realize el pago)---> (Si existe un mejor flujo para este apartado de localidades y pago dame una sugerencia)
+
+
+Al seleccionar una localidad, nos lleva a un apartado de compra, en donde el usuario debe ingresar sus datos para la factura, los datos que debe ingresar son: nombre, cedula, correo, numero de celular. Debe aceptar los terminos y las politicas de la plataforma, en ese mismo apartado le debe salir la informacion de pago del organizador al cual debe hacer el deposito del ticket (esta informacion ya existe ya que el organizador debio haber ingresado sus datos de pago al crear el evento de pago), al finalizar el proceso y dar en el boton comprar aqui se habre el apartado de WhatsApp para enviar un mensaje automatico al organizador con los datos del usuario que reservo el evento(los datos serian los que lleno en el formulario anterior mas la localidad seleccionada), y finalmente se genera un ticket de reserva del evento que podra visualizarlo en ese instante o puede ver en el apartado de "mis reservaciones" de su perfil.
+- De forma externa a la plataforma el organizador debe verificar en su cuenta bancaria si existe el pago con los datos respectivos enviados a su WhatsApp, de otro modo este puede reportar ese ticket al admin del sistema y se puede dar de baja dicho ticket(este ticket no se borrara para el usuario que genero el ticket pero se le notificara si se reporto y el motivo, ademas no podra ver el detalle del ticket, esto servira si existe algun inconveniente o confusion de este modo si el ticket fue erroneamente reportado el usuario que genero ese ticket podra reclamar dando clic en la opcion que tiene en el ticket(son 3 punto en la esquina superior derecha) y poner el motivo de su reporte. Asi el admin del sistema resolvera ese inconveniente).
+- Si el evento es gratuito el proceso es el mismo, solo que aqui no aparecera el numero de cuenta del organizador ya que esa infromacion aparece solo si el evento es de pago. Por lo demas el proceso es el mismo.
+
+
+La eliminacion que realize el usuario organizador en cualquiera de sus apartados es solo visual para el porque sera una eliminacion logica, ya que para el superadmin del sistema esos registros deben existir para gestionarlos y tener un orden de acciones, Solo si pasan los 90 dias en que el usuario haya borrado su cuenta, solo ahi se eliminara todo registro y relacion del mismo, no sin antes notificar automaticamente de que se realice un reporte de esa cuenta para tener un registro de todos los movimientos que hubo y todo lo relacionado a esa cuenta.
+
+A los usuarios que sigan a un perfil de organizador les aparecera en el slider de la seccion de explorar de la plataforma los eventos de esos organizadores.
+
+
+Para visualizar los perfiles de los organizadores o de un usuario normal no hace falta iniciar session, sin embargo si desean hacer: follow, crear reseña, guardar un evento, reservar un evento, reportar un evento; les llevara al login.
+En cambio si dan clic en crear un evento, este también los lleva al login sin embargo los detectara como usuarios de tipo organizador y empezaran con ese perfil, de todas formas eso se puede cambiar en su perfil del nav.
+
+Todo evento creado primero debe pasar a revision por un admin del sistema para detectar alguna anomalia, posible estafa, falta de respeto(palabras inadecuadas), imágenes inapropiadas, etc. si no se aprueba se le envia una notificación del porque no se aprobó con los motivos.
+
+
+Cuando un usuario organizador crea un evento este pasa a un estado de revision, una vez se aprueba este se publica automáticamente.
+
+
+tengo pensado seriamente en cambiar de reservaciones o reservas por: tickets. ----> siento que es mas logico y profesional.
+
+las tablas del panel administrativo deben ser hechas con listas ol o ul no con tablas html o como lo hacen las librerias profesionales de frontend.
+
+

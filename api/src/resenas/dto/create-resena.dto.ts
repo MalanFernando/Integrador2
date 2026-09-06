@@ -1,7 +1,8 @@
-import { IsInt, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export class CreateResenaDto {
   @IsString()
+  @MaxLength(20)
   eventoId: string;
 
   @IsInt()
@@ -10,5 +11,6 @@ export class CreateResenaDto {
   puntuacion: number;
 
   @IsString()
+  @MaxLength(1000)
   comentario: string;
 }

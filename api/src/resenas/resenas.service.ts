@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Resena } from './entities/resena.entity.js';
 import { Evento } from '../eventos/entities/evento.entity.js';
 import { CreateResenaDto } from './dto/create-resena.dto.js';
 import { ModerarResenaDto } from './dto/moderar-resena.dto.js';
+import { ReportarResenaDto } from './dto/reportar-resena.dto.js';
 
 @Injectable()
 export class ResenasService {
@@ -58,6 +63,17 @@ export class ResenasService {
     if (!resena) throw new NotFoundException('Reseña no encontrada');
     resena.estado = dto.estado;
     resena.motivoReporte = dto.motivoReporte ?? resena.motivoReporte;
+    return this.resenasRepo.save(resena);
+  }
+
+  async reportar(id: string, dto: ReportarResenaDto) {
+    const resena = await this.resenasRepo.findOne({ where: { id } });
+    if (!resena) throw new NotFoundException('Reseña no encontrada');
+    if (resena.estado === 'reportada') {
+      throw new BadRequestException('Esta reseña ya fue reportada');
+    }
+    resena.estado = 'reportada';
+    resena.motivoReporte = dto.motivo;
     return this.resenasRepo.save(resena);
   }
 }

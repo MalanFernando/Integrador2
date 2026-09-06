@@ -43,7 +43,7 @@ export class Reserva {
 
   @Column({
     type: 'enum',
-    enum: ['confirmada', 'verificada', 'cancelada'],
+    enum: ['confirmada', 'verificada', 'cancelada', 'invalidada'],
     default: 'confirmada',
   })
   estado: string;
@@ -60,6 +60,12 @@ export class Reserva {
 
   @Column({ name: 'verificado_por', type: 'bigint', nullable: true })
   verificadoPor: string | null;
+
+  @Column({ name: 'intervenido_por', type: 'bigint', nullable: true })
+  intervenidoPor: string | null;
+
+  @Column({ name: 'motivo_intervencion', type: 'text', nullable: true })
+  motivoIntervencion: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

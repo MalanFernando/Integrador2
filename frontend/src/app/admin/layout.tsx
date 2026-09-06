@@ -50,11 +50,11 @@ export default function AdminLayout({
             <div className="flex items-center gap-3 pl-4 border-l border-white/10">
               <Avatar
                 src={user.fotoPerfilUrl}
-                fallback={user.nombreCompleto?.charAt(0) || 'A'}
+                fallback={user.nombre?.charAt(0) || 'A'}
                 size="sm"
               />
               <div className="text-sm">
-                <p className="text-white font-medium">{user.nombreCompleto}</p>
+                <p className="text-white font-medium">{user.nombre}</p>
                 <p className="text-white/50 text-xs capitalize">{user.rol}</p>
               </div>
             </div>

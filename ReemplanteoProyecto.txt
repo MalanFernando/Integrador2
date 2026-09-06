@@ -1,5 +1,5 @@
 - Ahora antes de entrar al formulario para crear un evento sale una ventana emergente al dar clic en crear evento el cual me permite escoger entre: publicar un evento mediante una URL(para leer los metadatos y usarlos para publicar el evento) y mas un campo para ingresar una ubicacion ya que es una caracteristica que tiene nuestro proyeto; y la otra opcion de esa ventana emergente sera: crear el evento mediante el formulario.
-- un organizador(usuario) puede tener un maximo  de 5 eventos, este limiete me servira para despues  poner un plan para aumentar el limite y asi motetizar la plataforma.
+- un organizador(usuario) puede tener un maximo  de 5 eventos, este limite me servira para despues  poner un plan para aumentar el limite y asi motetizar la plataforma.
 - si un usuario(artista/usuario comun) esta en un evento este no puede chocar su disponibilidad de horario en otro evento.
 - un maximo de 5 eventos en total por usuario ya sea que lo suban como link para obtener los metadatos o por formulario de la plataforma.
 - un usario puede pertenecer a una organización creada por un organizador y este puede gestionar los eventos de esa organización dependiendo de los permisos dados por el organizador anfitrión. ademas automáticamente ese usuario que tiene permisos pasaria a ser un tipo de usuario organizador para que no exista conflicto de perfiles.
@@ -84,3 +84,36 @@ CREATE TABLE eventos (
 En cuanto a las ubicaciones el flujo es:
 Mostrar la ubicacion de los eventos en el mapa -> Ver posibles rutas para ese evento (opciones: a pie, en vehiculo) -> ver el detalle de una ruta seleccionada.
 Aqui en este apartado se puede compartir la ruta mediante un boton que me permite abrir en google maps o en otro servicio de mapas externo.	
+
+
+
+
+
+
+
+CAMBIOS:
+
+DROP TYPE IF EXISTS rol_usuario_enum CASCADE;
+CREATE TYPE rol_usuario_enum AS ENUM ('admin', 'organizador', 'usuario'); ---> solo necesito 3 roles, ya que artista es un usuario normal.
+
+
+DROP TYPE IF EXISTS estado_usuario_enum CASCADE;
+CREATE TYPE estado_usuario_enum AS ENUM ('activo', 'suspendido', 'inactivo'); ---> no uede ser pendiente o porque seria pendiente eso no tiene sentido para mi.
+
+DROP TYPE IF EXISTS rol_organizacion_enum CASCADE;
+CREATE TYPE rol_organizacion_enum AS ENUM ('editor', 'moderador' ---> aqui no serviria mucho solo visor porque prefiero que pueda moderar los comentarios de los usuarios, el moderador no puede editar los eventos solo modera los comentarios por el momento, puedes sugerirme que mas puede moderar.
+
+En el apartado de super-admin del sistema tenemos las siguientes acciones para el panel de acuerdo a los apartados:
+Gestion de usuarios:
+Acciones para cada registro de la lista de usuarios(revisar perfil, suspender un perfil por alguna falta, editar perfil).
+
+para las demas opciones es igual:
+gestion de organizadores, gestion de eventos, moderacion de reseñas.
+
+Pero para la gestion de reservas tenemos:
+Cancelar una reserva por causas administrativas.
+Invalidar una reserva fraudulenta.
+Corregir un caso excepcional.
+Restaurar una operación cuando corresponda.
+Registrar el motivo de la intervención.
+

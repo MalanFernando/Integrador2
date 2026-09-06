@@ -12,20 +12,26 @@ import {
   Ticket,
   ChevronDown,
   ShieldCheck,
-  UserCheck,
   Star,
   Minus,
   Plus,
+  Video,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import type { EventoDetalle, Localidad } from '@/types';
+import type { EventoDetalle } from '@/types';
 
 const REPORTES_URL =
   process.env.NEXT_PUBLIC_REPORTES_URL || 'http://localhost:3002';
+
+const EventMap = dynamic(
+  () => import('@/components/map/event-map').then((m) => ({ default: m.EventMap })),
+  { ssr: false },
+);
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -39,8 +45,10 @@ function formatHora(dateStr: string): string {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
-function disponibles(loc: Localidad): number {
-  return loc.capacidadTotal - loc.ticketsReservados;
+function esInfoPagoCompleta(
+  info: Record<string, unknown> | null | undefined,
+): boolean {
+  return !!info && typeof info === 'object' && Object.keys(info).length > 0;
 }
 
 export default function EventoDetallePage() {
@@ -50,6 +58,7 @@ export default function EventoDetallePage() {
   const [evento, setEvento] = useState<EventoDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reservaError, setReservaError] = useState('');
   const [selectedLoc, setSelectedLoc] = useState<string>('');
   const [cantidad, setCantidad] = useState(1);
   const [isFav, setIsFav] = useState(false);
@@ -68,14 +77,24 @@ export default function EventoDetallePage() {
       .get<EventoDetalle>(`/eventos/${params.id}`)
       .then((data) => {
         setEvento(data);
-        setSelectedLoc(data.localidades[0]?.id ?? '');
+        setSelectedLoc(data.localidades[0]?.nombre ?? '');
       })
       .catch(() => setError('No se pudo cargar el evento'))
       .finally(() => setLoading(false));
   }, [params.id]);
 
+  const esPasado = useMemo(
+    () => (evento ? new Date(evento.fechaFin) < new Date() : false),
+    [evento],
+  );
+
+  const infoPagoCompleta = useMemo(
+    () => esInfoPagoCompleta(evento?.informacionPago),
+    [evento],
+  );
+
   const loc = useMemo(
-    () => evento?.localidades.find((l) => l.id === selectedLoc),
+    () => evento?.localidades.find((l) => l.nombre === selectedLoc),
     [evento, selectedLoc],
   );
 
@@ -100,46 +119,46 @@ export default function EventoDetallePage() {
     }
   };
 
-  const reservar = async () => {
-    if (!loc) return;
+  const reservar = async (localidadNombre?: string, cantidadAReservar?: number) => {
+    if (!evento) return;
     if (!user) {
       router.push('/login');
       return;
     }
+    const nombreLocalidad =
+      localidadNombre ?? loc?.nombre ?? evento.localidades[0]?.nombre;
+    const totalTickets = cantidadAReservar ?? cantidad;
+    if (!nombreLocalidad) return;
+
     setReservando(true);
     setReservaOk(null);
+    setReservaError('');
     try {
       const res = await api.post<{ id: string; codigoTicket: string }>(
         '/reservas',
         {
-          localidadId: loc.id,
-          cantidadTickets: cantidad,
+          eventoId: evento.id,
+          localidadNombre: nombreLocalidad,
+          cantidadTickets: totalTickets,
         },
       );
       setReservaOk({
         id: res.id,
         codigoTicket: res.codigoTicket,
-        total: Number(loc.precio) * cantidad,
+        total: reservarTotal(nombreLocalidad, totalTickets),
       });
-      setEvento((prev) =>
-        prev
-          ? {
-              ...prev,
-              localidades: prev.localidades.map((l) =>
-                l.id === loc.id
-                  ? { ...l, ticketsReservados: l.ticketsReservados + cantidad }
-                  : l,
-              ),
-            }
-          : prev,
-      );
     } catch (err) {
-      setError(
+      setReservaError(
         err instanceof Error ? err.message : 'No se pudo completar la reserva',
       );
     } finally {
       setReservando(false);
     }
+  };
+
+  const reservarTotal = (nombreLocalidad: string, count: number): number => {
+    const l = evento?.localidades.find((x) => x.nombre === nombreLocalidad);
+    return l ? Number(l.precio) * count : 0;
   };
 
   if (loading) {
@@ -177,6 +196,10 @@ export default function EventoDetallePage() {
     );
   }
 
+  const imagenPrincipal = evento.imagenes[0] || '/images/event1.jpg';
+  const tieneUbicacion =
+    evento.latitud != null && evento.longitud != null;
+
   return (
     <div className="flex min-h-screen flex-col bg-black">
       <Navbar />
@@ -191,7 +214,7 @@ export default function EventoDetallePage() {
               <div className="relative rounded-2xl overflow-hidden">
                 <div className="w-full h-[400px] sm:h-[480px] lg:h-[520px] bg-gradient-to-br from-purple-900/30 to-black relative">
                   <img
-                    src={evento.imagenPrincipalUrl}
+                    src={imagenPrincipal}
                     alt={evento.titulo}
                     className="w-full h-full object-cover mix-blend-overlay opacity-80"
                   />
@@ -231,7 +254,11 @@ export default function EventoDetallePage() {
                     </div>
                     <div className="text-right">
                       <p className="text-white/50 text-xs uppercase">Total</p>
-                      <p className="text-white font-bold">${reservaOk.total.toFixed(2)}</p>
+                      <p className="text-white font-bold">
+                        {reservaOk.total === 0
+                          ? 'Gratis'
+                          : `$${reservaOk.total.toFixed(2)}`}
+                      </p>
                     </div>
                   </div>
                   <a
@@ -247,135 +274,230 @@ export default function EventoDetallePage() {
                 </section>
               )}
 
-              <section className="bg-[#121212] rounded-2xl p-6">
-                <h3 className="font-clash text-xl font-bold text-white mb-4">Localidades</h3>
-                <div className="space-y-3">
-                  {evento.localidades.map((localidad) => {
-                    const disp = disponibles(localidad);
-                    return (
-                      <label
-                        key={localidad.id}
-                        className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
-                          selectedLoc === localidad.id ? 'bg-white/10 border border-white/20' : 'bg-white/5 hover:bg-white/[0.07]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="localidad"
-                            checked={selectedLoc === localidad.id}
-                            onChange={() => {
-                              setSelectedLoc(localidad.id);
-                              setCantidad(1);
-                            }}
-                            className="accent-white w-4 h-4"
-                            disabled={disp <= 0}
-                          />
-                          <div>
-                            <p className="text-white text-sm font-medium">
-                              {localidad.nombre}{' '}
-                              <span className="text-white/50 font-normal">
-                                — {localidad.descripcion ?? 'Acceso general'}
-                              </span>
-                            </p>
-                            <p className="text-white/40 text-xs mt-0.5">
-                              {disp} disponibles de {localidad.capacidadTotal}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-white font-bold text-sm">
-                          {Number(localidad.precio) === 0
-                            ? 'Gratis'
-                            : `$${Number(localidad.precio).toFixed(2)}`}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-
-                {loc && disponibles(loc) > 0 && (
-                  <div className="mt-4 p-4 rounded-lg bg-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white text-sm font-medium">Cantidad</span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => setCantidad((c) => Math.max(1, c - 1))}
-                          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
-                        >
-                          <Minus className="h-4 w-4 text-white" />
-                        </button>
-                        <span className="text-white font-bold w-6 text-center">{cantidad}</span>
-                        <button
-                          onClick={() =>
-                            setCantidad((c) => Math.min(disponibles(loc), c + 1))
-                          }
-                          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
-                        >
-                          <Plus className="h-4 w-4 text-white" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/50">Total a pagar</span>
-                      <span className="text-white font-bold">
-                        {Number(loc.precio) === 0
-                          ? 'Gratis'
-                          : `$${(Number(loc.precio) * cantidad).toFixed(2)}`}
-                      </span>
-                    </div>
-                    <Button
-                      onClick={reservar}
-                      disabled={reservando}
-                      className="w-full mt-4 bg-white text-black hover:bg-white/90 flex items-center justify-center gap-2"
-                    >
-                      <Ticket className="h-4 w-4" />
-                      {reservando ? 'Reservando...' : user ? 'Reservar' : 'Inicia sesión para reservar'}
-                    </Button>
-                  </div>
-                )}
-                {loc && disponibles(loc) <= 0 && (
-                  <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-800/30">
-                    <p className="text-[#FF8284] text-sm flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF8284]" />
-                      Esta localidad está agotada
+              {esPasado ? (
+                <section className="bg-[#121212] rounded-2xl p-6">
+                  <div className="p-4 rounded-xl bg-white/5">
+                    <p className="text-white/70 text-sm flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-white/40" />
+                      Este evento ya finalizó y no acepta reservas.
                     </p>
                   </div>
-                )}
-              </section>
+                </section>
+              ) : evento.esGratuito ? (
+                <section className="bg-[#121212] rounded-2xl p-6">
+                  <h3 className="font-clash text-xl font-bold text-white mb-4">
+                    Entrada gratuita
+                  </h3>
+                  <p className="text-white/50 text-sm mb-4">
+                    Este evento es de acceso libre. Reserva tu cupo de forma gratuita.
+                  </p>
+                  {evento.localidades.length === 0 ? (
+                    <p className="text-white/50 text-sm">
+                      Este evento aún no está disponible para reservas.
+                    </p>
+                  ) : (
+                    <Button
+                      onClick={() => reservar(evento.localidades[0].nombre, 1)}
+                      disabled={reservando}
+                      className="w-full bg-white text-black hover:bg-white/90 flex items-center justify-center gap-2"
+                    >
+                      <Ticket className="h-4 w-4" />
+                      {reservando
+                        ? 'Reservando...'
+                        : user
+                          ? 'Reservar gratis'
+                          : 'Inicia sesión para reservar'}
+                    </Button>
+                  )}
+                  {reservaError && (
+                    <p className="mt-3 text-[#FF8284] text-sm">{reservaError}</p>
+                  )}
+                </section>
+              ) : !infoPagoCompleta ? (
+                <section className="bg-[#121212] rounded-2xl p-6">
+                  <p className="text-white/50 text-sm flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-white/40" />
+                    La información de pago de este evento aún no está disponible.
+                  </p>
+                </section>
+              ) : (
+                <section className="bg-[#121212] rounded-2xl p-6">
+                  <h3 className="font-clash text-xl font-bold text-white mb-4">Localidades</h3>
+                  <div className="space-y-3">
+                    {evento.localidades.map((localidad) => {
+                      const selected = selectedLoc === localidad.nombre;
+                      return (
+                        <label
+                          key={localidad.nombre}
+                          className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-colors ${
+                            selected ? 'bg-white/10 border border-white/20' : 'bg-white/5 hover:bg-white/[0.07]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="radio"
+                              name="localidad"
+                              checked={selected}
+                              onChange={() => {
+                                setSelectedLoc(localidad.nombre);
+                                setCantidad(1);
+                              }}
+                              className="accent-white w-4 h-4"
+                            />
+                            <div>
+                              <p className="text-white text-sm font-medium">
+                                {localidad.nombre}
+                              </p>
+                              <p className="text-white/40 text-xs mt-0.5">
+                                Aforo: {localidad.aforo} personas
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-white font-bold text-sm">
+                            {Number(localidad.precio) === 0
+                              ? 'Gratis'
+                              : `$${Number(localidad.precio).toFixed(2)}`}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {loc && (
+                    <div className="mt-4 p-4 rounded-lg bg-white/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white text-sm font-medium">Cantidad</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setCantidad((c) => Math.max(1, c - 1))}
+                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                          >
+                            <Minus className="h-4 w-4 text-white" />
+                          </button>
+                          <span className="text-white font-bold w-6 text-center">{cantidad}</span>
+                          <button
+                            onClick={() => setCantidad((c) => Math.min(10, c + 1))}
+                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20"
+                          >
+                            <Plus className="h-4 w-4 text-white" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/50">Total a pagar</span>
+                        <span className="text-white font-bold">
+                          {Number(loc.precio) === 0
+                            ? 'Gratis'
+                            : `$${(Number(loc.precio) * cantidad).toFixed(2)}`}
+                        </span>
+                      </div>
+                      {reservaError && (
+                        <p className="mt-2 text-[#FF8284] text-sm">{reservaError}</p>
+                      )}
+                      <Button
+                        onClick={() => reservar()}
+                        disabled={reservando}
+                        className="w-full mt-4 bg-white text-black hover:bg-white/90 flex items-center justify-center gap-2"
+                      >
+                        <Ticket className="h-4 w-4" />
+                        {reservando ? 'Reservando...' : user ? 'Reservar' : 'Inicia sesión para reservar'}
+                      </Button>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
 
             <div className="space-y-6">
               <div>
                 {evento.categoria && (
-                  <Badge variant="warning" className="mb-3">
+                  <Badge
+                    variant="warning"
+                    className="mb-3"
+                    style={{ backgroundColor: evento.categoria.colorHex }}
+                  >
                     {evento.categoria.nombre}
                   </Badge>
                 )}
                 <h1 className="font-clash text-4xl sm:text-5xl font-bold text-white leading-tight">
                   {evento.titulo}
                 </h1>
-                <p className="text-white/60 text-lg mt-2 flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  {evento.direccion ?? 'Ubicación no disponible'}
-                </p>
+                {evento.online ? (
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <span className="inline-flex items-center rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white">
+                      En línea
+                    </span>
+                    {evento.linkOnline && (
+                      <a
+                        href={evento.linkOnline}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors"
+                      >
+                        <Video className="h-4 w-4" />
+                        Evento en línea
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-white/60 text-lg mt-2 flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    {evento.direccion ?? 'Ubicación no disponible'}
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-3 text-[#FF8E1C] font-medium">
                   <span>{formatDate(evento.fechaInicio)}</span>
                   <span className="w-1 h-1 rounded-full bg-[#FF8E1C]" />
                   <span>{formatHora(evento.fechaInicio)}</span>
+                  {evento.fechaFin && new Date(evento.fechaFin) > new Date(evento.fechaInicio) && (
+                    <>
+                      <span className="text-white/40">hasta</span>
+                      <span>{formatDate(evento.fechaFin)}</span>
+                    </>
+                  )}
                 </div>
-                <div className="inline-flex items-center gap-1 mt-3 rounded-full bg-[#E3F4F9] px-3 py-1.5 text-black text-xs">
-                  <MapPin className="h-3 w-3" />
-                  {evento.direccion}
-                </div>
+                {!evento.online && evento.direccion && (
+                  <div className="inline-flex items-center gap-1 mt-3 rounded-full bg-[#E3F4F9] px-3 py-1.5 text-black text-xs">
+                    <MapPin className="h-3 w-3" />
+                    {evento.direccion}
+                  </div>
+                )}
               </div>
+
+              {tieneUbicacion && (
+                <section className="bg-[#121212] rounded-2xl p-6">
+                  <h3 className="font-clash text-xl font-bold text-white mb-4">
+                    Ubicación
+                  </h3>
+                  {evento.direccion && (
+                    <p className="text-white/60 text-sm mb-4 flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {evento.direccion}
+                    </p>
+                  )}
+                  <div className="rounded-xl overflow-hidden">
+                    <EventMap
+                      events={[
+                        {
+                          id: evento.id,
+                          titulo: evento.titulo,
+                          latitud: evento.latitud,
+                          longitud: evento.longitud,
+                          categoriaNombre: evento.categoria?.nombre ?? null,
+                        },
+                      ]}
+                      center={[evento.latitud as number, evento.longitud as number]}
+                      zoom={15}
+                      height="280px"
+                    />
+                  </div>
+                </section>
+              )}
 
               <div className="space-y-1 text-white/60 text-sm">
                 <p>• {evento.restriccionAcceso}</p>
-                {evento.presentadoPor && (
-                  <p>• Presented by {evento.presentadoPor}</p>
-                )}
-                {evento.organizacion && (
-                  <p>• Organizado por {evento.organizacion.nombre}</p>
+                {evento.organizador && (
+                  <p>• Organizado por {evento.organizador.nombre}{evento.organizador.apellido ? ` ${evento.organizador.apellido}` : ''}</p>
                 )}
               </div>
 
@@ -391,49 +513,65 @@ export default function EventoDetallePage() {
                 <p className="text-white/60 text-sm leading-relaxed">
                   {evento.descripcion}
                 </p>
+                {evento.etiquetas.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {evento.etiquetas.map((tag, i) => (
+                      <span key={i} className="rounded-full bg-white/5 border border-white/10 px-3 py-1 text-xs text-white/60">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </section>
 
               <hr className="border-white/10" />
 
               <section>
                 <h3 className="font-clash text-xl font-bold text-white mb-4">Organizador</h3>
-                {evento.organizacion ? (
-                  <div className="flex items-start gap-4">
+                {evento.organizador ? (
+                  <Link
+                    href={
+                      evento.organizador.slug
+                        ? `/host/${evento.organizador.slug}`
+                        : `/perfil/${evento.organizador.id}`
+                    }
+                    className="flex items-start gap-4 group"
+                  >
                     <img
-                      src={
-                        evento.organizacion.logoUrl ??
-                        '/images/img3.jpg'
-                      }
-                      alt={evento.organizacion.nombre}
-                      className="w-14 h-14 object-cover"
+                      src={evento.organizador.fotoPerfilUrl ?? '/images/img3.jpg'}
+                      alt={`${evento.organizador.nombre} ${evento.organizador.apellido}`}
+                      className="w-14 h-14 rounded-full object-cover"
                     />
                     <div className="flex-1">
-                      <h4 className="text-white font-bold">
-                        {evento.organizacion.nombre}
+                      <h4 className="text-white font-bold group-hover:text-white/70 transition-colors">
+                        {evento.organizador.nombre}{' '}
+                        {evento.organizador.apellido}
                       </h4>
-                      <p className="text-white/50 text-xs mt-2">
-                        {evento.organizacion.descripcion ?? ''}
-                      </p>
+                      {evento.organizador.biografia && (
+                        <p className="text-white/50 text-xs mt-2">
+                          {evento.organizador.biografia}
+                        </p>
+                      )}
                     </div>
-                  </div>
+                  </Link>
                 ) : (
                   <p className="text-white/50 text-sm">
-                    Organización no disponible
+                    Organizador no disponible
                   </p>
                 )}
               </section>
 
               <hr className="border-white/10" />
 
-              {evento.artistas.length > 0 && (
+              {evento.usuariosCartelera.length > 0 && (
                 <>
                   <section>
                     <h3 className="font-clash text-xl font-bold text-white mb-4">
-                      Artistas del cartel
+                      Cartel
                     </h3>
                     <div className="space-y-3">
-                      {evento.artistas.map((artista, i) => (
-                        <div key={artista.id ?? i} className="flex items-center justify-between">
+                      {evento.usuariosCartelera.map((artista, i) => (
+                        <div key={artista.usuarioId ?? i} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 flex items-center justify-center text-white text-xs font-bold">
                               {artista.nombre
@@ -470,7 +608,7 @@ export default function EventoDetallePage() {
                           onClick={() => setOpenFaq(openFaq === i ? null : i)}
                           className="flex items-center justify-between w-full text-left text-white text-sm font-medium py-2"
                         >
-                          {faq.pregunta}
+                          {faq.titulo}
                           <ChevronDown
                             className={`h-4 w-4 text-white/50 transition-transform ${openFaq === i ? 'rotate-180' : ''}`}
                           />
@@ -478,6 +616,45 @@ export default function EventoDetallePage() {
                         {openFaq === i && (
                           <p className="text-white/50 text-sm mt-1">
                             {faq.respuesta}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {evento.resenas.length > 0 && (
+                <section>
+                  <h3 className="font-clash text-xl font-bold text-white mb-4">
+                    Reseñas
+                  </h3>
+                  <div className="space-y-4">
+                    {evento.resenas.map((resena) => (
+                      <div key={resena.id} className="rounded-xl bg-white/5 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={resena.autor.fotoPerfilUrl ?? '/images/img3.jpg'}
+                              alt={resena.autor.nombre}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <span className="text-white text-sm font-medium">
+                              {resena.autor.nombre} {resena.autor.apellido}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < resena.puntuacion ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                        {resena.comentario && (
+                          <p className="text-white/60 text-sm mt-2">
+                            {resena.comentario}
                           </p>
                         )}
                       </div>

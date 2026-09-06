@@ -30,12 +30,12 @@ export class Evento {
   @JoinColumn({ name: 'categoria_id' })
   categoria: Categoria;
 
-  @Column({ name: 'ubicacion_id' })
-  ubicacionId: string;
+  @Column({ name: 'ubicacion_id', type: 'bigint', nullable: true })
+  ubicacionId: string | null;
 
   @ManyToOne(() => Ubicacion)
   @JoinColumn({ name: 'ubicacion_id' })
-  ubicacion: Ubicacion;
+  ubicacion: Ubicacion | null;
 
   @Column({ name: 'creado_por' })
   creadoPor: string;
@@ -56,7 +56,7 @@ export class Evento {
   @Column({ name: 'fecha_fin', type: 'timestamptz' })
   fechaFin: Date;
 
-  @Column({ type: 'int', default: 100 })
+  @Column({ type: 'int', default: 1 })
   aforo: number;
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
@@ -64,6 +64,9 @@ export class Evento {
 
   @Column({ type: 'boolean', default: false })
   online: boolean;
+
+  @Column({ name: 'link_online', type: 'text', nullable: true })
+  linkOnline: string | null;
 
   @Column({ name: 'usuarios_cartelera', type: 'jsonb', default: () => "'[]'" })
   usuariosCartelera: Record<string, unknown>[];
@@ -80,6 +83,9 @@ export class Evento {
     default: 'publico',
   })
   visibilidad: string;
+
+  @Column({ name: 'es_gratuito', type: 'boolean', default: false })
+  esGratuito: boolean;
 
   @Column({ type: 'jsonb', default: () => "'[]'" })
   localidades: Record<string, unknown>[];

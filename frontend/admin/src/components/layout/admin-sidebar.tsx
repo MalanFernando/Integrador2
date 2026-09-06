@@ -5,12 +5,14 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
-  Users,
-  Building2,
-  Calendar,
-  Store,
-  Star,
   BarChart3,
+  Users,
+  Briefcase,
+  CalendarCheck2,
+  Star,
+  Ticket,
+  Shapes,
+  ClipboardList,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -20,7 +22,6 @@ interface NavItem {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  disabled?: boolean;
 }
 
 const sections: { label: string; items: NavItem[] }[] = [
@@ -31,17 +32,19 @@ const sections: { label: string; items: NavItem[] }[] = [
   {
     label: 'GESTIÓN',
     items: [
+      { href: '/reportes', label: 'Reportes', icon: BarChart3 },
       { href: '/usuarios', label: 'Usuarios', icon: Users },
-      { href: '/organizaciones', label: 'Organizaciones', icon: Building2 },
-      { href: '/eventos', label: 'Eventos', icon: Calendar },
-      { href: '/establecimientos', label: 'Establecimientos', icon: Store },
+      { href: '/organizadores', label: 'Organizadores', icon: Briefcase },
+      { href: '/eventos', label: 'Eventos', icon: CalendarCheck2 },
       { href: '/resenas', label: 'Reseñas', icon: Star },
+      { href: '/tickets', label: 'Tickets', icon: Ticket },
+      { href: '/categorias', label: 'Categorías', icon: Shapes },
     ],
   },
   {
     label: 'SISTEMA',
     items: [
-      { href: '/reportes', label: 'Reportes', icon: BarChart3 },
+      { href: '/registro', label: 'Registro', icon: ClipboardList },
       { href: '/configuracion', label: 'Configuración', icon: Settings },
     ],
   },
@@ -67,9 +70,12 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
           />
         </Link>
       </div>
-      <nav className="flex-1 overflow-hidden px-6 py-4">
+      <nav className="flex-1 overflow-y-auto px-6 py-4">
         {sections.map((section) => (
-          <div key={section.label} className="mb-4 border-b border-white/25 pb-4 last:border-0">
+          <div
+            key={section.label}
+            className="mb-4 border-b border-white/25 pb-4 last:border-0"
+          >
             <span className="block px-4 pb-4 text-sm font-semibold text-white/75">
               {section.label}
             </span>
@@ -77,21 +83,6 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
               {section.items.map((link) => {
                 const Icon = link.icon;
                 const isActive = pathname === link.href;
-                if (link.disabled) {
-                  return (
-                    <div
-                      key={link.href}
-                      className="flex cursor-not-allowed items-center gap-3 rounded-md px-4 py-3 text-base font-semibold text-white/40"
-                      title="Próximamente"
-                    >
-                      <Icon className="h-5 w-5" />
-                      <span className="flex-1">{link.label}</span>
-                      <span className="text-[10px] uppercase tracking-wide">
-                        Pronto
-                      </span>
-                    </div>
-                  );
-                }
                 return (
                   <Link
                     key={link.href}

@@ -31,11 +31,27 @@ export class UsuariosController {
     return this.usuariosService.publicProfile(id);
   }
 
+  @Get('slug/:slug')
+  async findBySlug(@Param('slug') slug: string) {
+    const usuario = await this.usuariosService.findBySlug(slug);
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+    return withoutPassword(usuario);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@Param('id') id: string) {
     const usuario = await this.usuariosService.findOneById(id);
     if (!usuario) throw new NotFoundException('Usuario no encontrado');
     return withoutPassword(usuario);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('cambiar-perfil')
+  cambiarPerfil(
+    @CurrentUser() user: { id: string },
+    @Body('perfilActivo') perfilActivo: string,
+  ) {
+    return this.usuariosService.cambiarPerfil(user.id, perfilActivo);
   }
 }

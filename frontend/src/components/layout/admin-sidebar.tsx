@@ -14,6 +14,9 @@ import {
   Settings,
   LogOut,
   MapPin,
+  Ticket,
+  Tag,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -31,13 +34,15 @@ const sections = [
       { href: '/admin/usuarios', label: 'Usuarios', icon: Users },
       { href: '/admin/organizaciones', label: 'Organizaciones', icon: Building2 },
       { href: '/admin/eventos', label: 'Eventos', icon: Calendar },
+      { href: '/admin/tickets', label: 'Tickets', icon: Ticket },
+      { href: '/admin/categorias', label: 'Categorías', icon: Tag },
       { href: '/admin/resenas', label: 'Reseñas', icon: Star },
     ],
   },
   {
     label: 'SISTEMA',
     items: [
-      { href: '/admin/registro', label: 'Registro', icon: ClipboardList },
+      { href: '/admin/registro', label: 'Registro', icon: FileText },
       { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
     ],
   },

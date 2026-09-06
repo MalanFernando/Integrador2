@@ -37,7 +37,7 @@ export class MiembroOrganizacion {
   @Column({
     name: 'rol_organizacion',
     type: 'enum',
-    enum: ['editor', 'visor'],
+    enum: ['editor', 'moderador'],
     default: 'editor',
   })
   rolOrganizacion: string;

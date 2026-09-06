@@ -1,76 +1,134 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import { API_URL } from '@/lib/api';
+import { registerSchema } from '@/lib/validation';
+
+const registerFormSchema = registerSchema
+  .extend({
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña'),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
+
+type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
 export function RegisterForm() {
   const { register } = useAuth();
   const router = useRouter();
-  const [nombreCompleto, setNombreCompleto] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [telefono, setTelefono] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const {
+    register: registerField,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(registerFormSchema),
+    defaultValues: {
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefono: '',
+      cedula: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
+
+  const onSubmit = async (values: RegisterFormValues) => {
     setError('');
-
-    if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
-      return;
-    }
-
-    setLoading(true);
     try {
-      await register({ email, password, nombreCompleto, telefono: telefono || undefined });
+      await register({
+        email: values.email.toLowerCase(),
+        password: values.password,
+        nombre: values.nombre,
+        apellido: values.apellido,
+        telefono: values.telefono,
+        cedula: values.cedula,
+      });
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrarse');
-    } finally {
-      setLoading(false);
     }
   };
 
+  function handleGoogleLogin() {
+    window.location.href = `${API_URL}/auth/google`;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {error && (
         <div className="rounded-md bg-red-900/50 border border-red-800 p-3 text-sm text-red-300">
           {error}
         </div>
       )}
+
       <Input
-        id="nombreCompleto"
-        label="Nombre completo"
-        placeholder="Juan Pérez"
-        value={nombreCompleto}
-        onChange={(e) => setNombreCompleto(e.target.value)}
+        id="nombre"
+        label="Nombre"
+        placeholder="Juan"
+        {...registerField('nombre')}
+        error={errors.nombre?.message}
         required
       />
+
+      <Input
+        id="apellido"
+        label="Apellido"
+        placeholder="Apellido"
+        {...registerField('apellido')}
+        error={errors.apellido?.message}
+      />
+
       <Input
         id="email"
         label="Correo electrónico"
         type="email"
         placeholder="usuario@ejemplo.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        {...registerField('email')}
+        error={errors.email?.message}
         required
       />
+
+      <Input
+        id="telefono"
+        label="Teléfono"
+        placeholder="+593 999 999 999"
+        {...registerField('telefono')}
+        error={errors.telefono?.message}
+      />
+
+      <Input
+        id="cedula"
+        label="Cédula"
+        placeholder="1234567890"
+        {...registerField('cedula')}
+        error={errors.cedula?.message}
+      />
+
       <div className="relative">
         <Input
           id="password"
           label="Contraseña"
           type={showPassword ? 'text' : 'password'}
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Mínimo 8 caracteres"
+          {...registerField('password')}
+          error={errors.password?.message}
           required
         />
         <button
@@ -81,24 +139,39 @@ export function RegisterForm() {
           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
-      <Input
-        id="telefono"
-        label="Teléfono"
-        type="tel"
-        placeholder="+593 999 999 999"
-        value={telefono}
-        onChange={(e) => setTelefono(e.target.value)}
-      />
-      <Button type="submit" className="w-full bg-white text-black hover:bg-white/90" disabled={loading}>
-        {loading ? 'Creando cuenta...' : 'Registrarse'}
+
+      <div className="relative">
+        <Input
+          id="confirmPassword"
+          label="Confirmar contraseña"
+          type={showConfirm ? 'text' : 'password'}
+          placeholder="Repite la contraseña"
+          {...registerField('confirmPassword')}
+          error={errors.confirmPassword?.message}
+          required
+        />
+        <button
+          type="button"
+          onClick={() => setShowConfirm(!showConfirm)}
+          className="absolute right-0 bottom-2 text-white/50 hover:text-white"
+        >
+          {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? 'Creando cuenta...' : 'Registrarse'}
       </Button>
+
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-white/20" />
         <span className="flex-shrink mx-4 text-sm text-white/50">O continúa con</span>
         <div className="flex-grow border-t border-white/20" />
       </div>
+
       <button
         type="button"
+        onClick={handleGoogleLogin}
         className="w-full flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white text-black h-12 px-4 text-sm font-medium hover:bg-white/90 transition-colors"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -109,6 +182,7 @@ export function RegisterForm() {
         </svg>
         Google
       </button>
+
       <p className="text-center text-sm text-white/60">
         ¿Ya tienes cuenta?{' '}
         <Link href="/login" className="text-white font-bold hover:underline">

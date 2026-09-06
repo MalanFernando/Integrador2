@@ -1,10 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Provincia } from './entities/provincia.entity.js';
 import { Ciudad } from './entities/ciudad.entity.js';
 import { Ubicacion } from './entities/ubicacion.entity.js';
 import { CreateUbicacionDto } from './dto/create-ubicacion.dto.js';
+
+export interface RutaParams {
+  origenLat: number;
+  origenLng: number;
+  destinoLat: number;
+  destinoLng: number;
+  modo: 'caminando' | 'vehiculo';
+}
+
+export interface RutaResultado {
+  distanciaKm: number;
+  duracionMin: number;
+  geometria: unknown;
+  modo: string;
+}
+
+export interface CompartirLinks {
+  googleMaps: string;
+  waze: string;
+  appleMaps: string;
+}
 
 @Injectable()
 export class GeoService {
@@ -68,5 +93,52 @@ export class GeoService {
     const dto = { ...ubicacion } as Partial<Ubicacion>;
     delete dto.geom;
     return dto;
+  }
+
+  async calcularRuta(params: RutaParams): Promise<RutaResultado> {
+    const osrmModo = params.modo === 'caminando' ? 'foot' : 'driving';
+    const url = `https://router.project-osrm.org/route/v1/${osrmModo}/${params.origenLng},${params.origenLat};${params.destinoLng},${params.destinoLat}?overview=full&geometries=geojson`;
+
+    let data: Record<string, unknown>;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      data = (await response.json()) as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException('No se pudo calcular la ruta');
+    }
+
+    if (data.code !== 'Ok') {
+      throw new BadRequestException('No se encontró una ruta válida');
+    }
+
+    const routes = data.routes as Array<{
+      distance: number;
+      duration: number;
+      geometry: unknown;
+    }>;
+    const route = routes[0];
+
+    return {
+      distanciaKm: Math.round((route.distance / 1000) * 100) / 100,
+      duracionMin: Math.round(route.duration / 60),
+      geometria: route.geometry,
+      modo: params.modo,
+    };
+  }
+
+  generarLinksCompartir(
+    lat: number,
+    lng: number,
+    nombre?: string,
+  ): CompartirLinks {
+    const label = encodeURIComponent(nombre ?? 'Ubicación');
+    return {
+      googleMaps: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      waze: `https://www.waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+      appleMaps: `https://maps.apple.com/?ll=${lat},${lng}&q=${label}`,
+    };
   }
 }

@@ -1,19 +1,14 @@
-export const ROL_USUARIO_ENUM = [
-  'admin',
-  'organizador',
-  'artista',
-  'usuario',
-] as const;
+export const ROL_USUARIO_ENUM = ['admin', 'organizador', 'usuario'] as const;
 export type RolUsuario = (typeof ROL_USUARIO_ENUM)[number];
 
 export const ESTADO_USUARIO_ENUM = [
   'activo',
   'suspendido',
-  'pendiente',
+  'inactivo',
 ] as const;
 export type EstadoUsuario = (typeof ESTADO_USUARIO_ENUM)[number];
 
-export const ROL_ORGANIZACION_ENUM = ['editor', 'visor'] as const;
+export const ROL_ORGANIZACION_ENUM = ['editor', 'moderador'] as const;
 export type RolOrganizacion = (typeof ROL_ORGANIZACION_ENUM)[number];
 
 export const ESTADO_MIEMBRO_ENUM = ['activo', 'inactivo', 'pendiente'] as const;
@@ -36,6 +31,8 @@ export const ESTADO_RESERVA_ENUM = [
   'confirmada',
   'verificada',
   'cancelada',
+  'invalidada',
+  'reportada',
 ] as const;
 
 export const ESTADO_RESENA_ENUM = ['visible', 'reportada', 'oculta'] as const;

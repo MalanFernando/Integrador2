@@ -32,3 +32,12 @@ export function capitalize(value: string): string {
   if (!value) return value;
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+const currencyFormatter = new Intl.NumberFormat('es-EC', {
+  style: 'currency',
+  currency: 'USD',
+});
+
+export function formatCurrency(value: number): string {
+  return currencyFormatter.format(value || 0);
+}

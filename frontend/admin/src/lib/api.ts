@@ -69,6 +69,27 @@ class ApiClient {
   delete<T>(path: string) {
     return this.request<T>(path, { method: 'DELETE' });
   }
+
+  async uploadImage(file: File): Promise<string> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_URL}/upload/imagen`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    const json = (await res.json()) as ApiEnvelope<{ url: string }>;
+    if (!res.ok) {
+      throw new Error(
+        (json as { message?: string }).message || 'Error al subir la imagen',
+      );
+    }
+    return json.data.url;
+  }
 }
 
 export const api = new ApiClient();

@@ -1,39 +1,47 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { useAuth } from '@/lib/auth-context';
+import { loginSchema, type LoginValues } from '@/lib/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { AuthResponse } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { login, logout } = useAuth();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function onSubmit(values: LoginValues) {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post<AuthResponse>('/auth/login', { email, password });
-      if (res.user.rol !== 'admin') {
+      const u = await login(values.email, values.password);
+      if (u.rol !== 'admin' || u.estado !== 'activo') {
+        logout();
         setError(
-          'Acceso restringido: esta cuenta no tiene permisos de administrador.',
+          'Acceso restringido: esta cuenta no tiene permisos de administrador activo.',
         );
         return;
       }
-      await login(email, password);
       router.replace('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
+      setError(
+        err instanceof Error ? err.message : 'Error al iniciar sesión',
+      );
     } finally {
       setLoading(false);
     }
@@ -52,7 +60,7 @@ export default function LoginPage() {
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(onSubmit)}
           className="space-y-6 rounded-lg border border-white/10 p-8"
         >
           <div>
@@ -78,8 +86,8 @@ export default function LoginPage() {
             required
             autoComplete="email"
             placeholder="admin@hastalavuelta.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            error={errors.email?.message}
+            {...register('email')}
           />
 
           <Input
@@ -89,8 +97,8 @@ export default function LoginPage() {
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            error={errors.password?.message}
+            {...register('password')}
           />
 
           <Button type="submit" className="w-full" disabled={loading}>

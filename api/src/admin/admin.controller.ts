@@ -22,6 +22,11 @@ import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto.js';
 import { CreateEventoDto } from '../eventos/dto/create-evento.dto.js';
 import { UpdateEventoDto } from '../eventos/dto/update-evento.dto.js';
+import { IntervenirReservaDto } from './dto/intervenir-reserva.dto.js';
+import { GestionarReporteDto } from '../reportes/dto/gestionar-reporte.dto.js';
+import { GestionarReporteReservaDto } from '../reportes-reservas/dto/gestionar-reporte-reserva.dto.js';
+import { FiltroFechaDto } from './dto/filtro-fecha.dto.js';
+import { VerificarReservaDto } from './dto/verificar-reserva.dto.js';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -36,6 +41,69 @@ export class AdminController {
   @Get('estadisticas')
   estadisticas() {
     return this.adminService.estadisticas();
+  }
+
+  @Get('dashboard')
+  dashboard(@Query() query: FiltroFechaDto) {
+    return this.adminService.dashboardCompleto(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('dashboard/eventos-por-categoria')
+  eventosPorCategoria(@Query() query: FiltroFechaDto) {
+    return this.adminService.eventosPorCategoria(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('dashboard/estado-organizadores')
+  estadoOrganizadores(@Query() query: FiltroFechaDto) {
+    return this.adminService.estadoOrganizadores(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('dashboard/eventos-atencion')
+  eventosRequierenAtencion(@Query() query: FiltroFechaDto) {
+    return this.adminService.eventosRequierenAtencion(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('dashboard/eventos-reservados')
+  eventosConReservas(@Query() query: FiltroFechaDto) {
+    return this.adminService.eventosConReservas(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('dashboard/actividad-reciente')
+  actividadReciente(@Query() query: FiltroFechaDto) {
+    return this.adminService.actividadReciente(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
+  }
+
+  @Get('reportes/sistema')
+  reporteSistema(@Query() query: FiltroFechaDto) {
+    return this.adminService.generarReporteSistema(
+      query.filtro,
+      query.fechaDesde,
+      query.fechaHasta,
+    );
   }
 
   @Get('usuarios')
@@ -173,8 +241,57 @@ export class AdminController {
     @CurrentUser() user: { id: string; rol: string },
     @Ip() ip: string,
     @Param('id') id: string,
+    @Body() dto: VerificarReservaDto,
   ) {
-    return this.adminService.verificarReserva(id, this.ctx(user, ip));
+    return this.adminService.verificarReserva(
+      id,
+      dto.motivo,
+      this.ctx(user, ip),
+    );
+  }
+
+  @Put('reservas/:id/intervenir')
+  intervenirReserva(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: IntervenirReservaDto,
+  ) {
+    return this.adminService.intervenirReserva(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('reportes-eventos')
+  listReportes(@Query('estado') estado?: string) {
+    return this.adminService.listReportes(estado);
+  }
+
+  @Put('reportes-eventos/:id/gestionar')
+  gestionarReporte(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: GestionarReporteDto,
+  ) {
+    return this.adminService.gestionarReporte(id, dto, this.ctx(user, ip));
+  }
+
+  @Get('reportes-reservas')
+  listReportesReservas(@Query('estado') estado?: string) {
+    return this.adminService.listReportesReservas(estado);
+  }
+
+  @Put('reportes-reservas/:id/gestionar')
+  gestionarReporteReserva(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+    @Body() dto: GestionarReporteReservaDto,
+  ) {
+    return this.adminService.gestionarReporteReserva(
+      id,
+      dto,
+      this.ctx(user, ip),
+    );
   }
 
   @Get('bitacora')

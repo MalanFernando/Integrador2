@@ -46,17 +46,20 @@ export class Usuario {
 
   @Column({
     type: 'enum',
-    enum: ['admin', 'organizador', 'artista', 'usuario'],
+    enum: ['admin', 'organizador', 'usuario'],
     default: 'usuario',
   })
   rol: string;
 
   @Column({
     type: 'enum',
-    enum: ['activo', 'suspendido', 'pendiente'],
+    enum: ['activo', 'suspendido', 'inactivo'],
     default: 'activo',
   })
   estado: string;
+
+  @Column({ name: 'plan_id', type: 'int', nullable: true })
+  planId: number | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
@@ -69,4 +72,10 @@ export class Usuario {
 
   @Column({ name: 'deleted_by', type: 'bigint', nullable: true })
   deletedBy: string | null;
+
+  @Column({ name: 'fecha_eliminacion', type: 'timestamptz', nullable: true })
+  fechaEliminacion: Date | null;
+
+  @Column({ length: 100, nullable: true, unique: true })
+  slug: string | null;
 }

@@ -2,7 +2,14 @@
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import type { EventItem } from '@/types';
+
+export interface MapaEvento {
+  id: string;
+  titulo: string;
+  latitud: number | null;
+  longitud: number | null;
+  categoriaNombre?: string | null;
+}
 
 // Fix Leaflet marker icon issue
 const icon = L.icon({
@@ -16,7 +23,7 @@ const icon = L.icon({
 });
 
 interface EventMapProps {
-  events: EventItem[];
+  events: MapaEvento[];
   center?: [number, number];
   zoom?: number;
   height?: string;
@@ -58,8 +65,12 @@ export function EventMap({
               <Popup>
                 <div className="text-sm">
                   <strong>{event.titulo}</strong>
-                  <br />
-                  <span className="text-slate-500">{event.categoriaNombre}</span>
+                  {event.categoriaNombre && (
+                    <>
+                      <br />
+                      <span className="text-slate-500">{event.categoriaNombre}</span>
+                    </>
+                  )}
                 </div>
               </Popup>
             </Marker>

@@ -26,14 +26,14 @@ export function AdminTopbar() {
             <Avatar
               src={user?.fotoPerfilUrl}
               fallback={
-                user?.nombreCompleto
-                  ? user.nombreCompleto.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+                user?.nombre
+                  ? user.nombre.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
                   : 'AD'
               }
               size="sm"
             />
             <span className="text-base font-semibold text-white">
-              {user?.nombreCompleto?.split(' ')[0] || 'Admin'}
+              {user?.nombre?.split(' ')[0] || 'Admin'}
             </span>
             <ChevronDown className="h-5 w-5 text-white" />
           </div>

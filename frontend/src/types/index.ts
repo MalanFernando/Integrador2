@@ -1,13 +1,21 @@
+export type RolUsuario = 'admin' | 'organizador' | 'usuario';
+export type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo';
+
 export interface User {
   id: string;
   email: string;
-  nombreCompleto: string;
-  telefono?: string;
-  fotoPerfilUrl?: string;
-  biografia?: string;
-  redesSociales?: Record<string, unknown>;
-  rol: 'admin' | 'organizador' | 'artista' | 'usuario';
-  estado: 'activo' | 'suspendido' | 'pendiente';
+  nombre: string;
+  apellido: string;
+  slug: string | null;
+  telefono: string | null;
+  fotoPerfilUrl: string | null;
+  fotoPortada: string | null;
+  biografia: string | null;
+  etiqueta: string | null;
+  redesSociales: Record<string, unknown>;
+  ubicacion?: Record<string, unknown> | null;
+  rol: RolUsuario;
+  estado: EstadoUsuario;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,22 +38,29 @@ export interface PaginatedResult<T> {
   limit: number;
 }
 
+export interface Category {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  iconoUrl: string | null;
+  colorHex: string;
+}
+
 export interface EventItem {
   id: string;
   titulo: string;
   descripcion: string;
   fechaInicio: string;
   fechaFin: string;
-  capacidadTotal: number;
-  imagenPrincipalUrl: string;
+  aforo: number;
+  imagenes: string[];
+  online: boolean;
+  visibilidad: string;
   estado: string;
   categoriaId: number;
-  organizacionId: string;
-  ubicacionId: string;
+  organizadorId: string;
+  ubicacionId: string | null;
   createdAt: string;
-  organizacionNombre: string;
-  organizacionSlug: string;
-  organizacionLogo: string | null;
   categoriaNombre: string;
   categoriaColor: string | null;
   latitud: number | null;
@@ -54,77 +69,103 @@ export interface EventItem {
 }
 
 export interface Localidad {
-  id: string;
-  eventoId: string;
   nombre: string;
-  descripcion: string | null;
-  precio: string;
-  capacidadTotal: number;
-  ticketsReservados: number;
-  estado: 'disponible' | 'agotado';
-  createdAt: string;
-  updatedAt: string;
+  aforo: number;
+  precio: number;
 }
 
-export interface Artista {
-  id: string;
-  eventoId: string;
+export interface CartelItem {
+  usuarioId?: string;
   nombre: string;
   rol: string;
   orden: number;
-  fotoUrl: string | null;
-  bio: string | null;
+  redSocial?: string | null;
 }
 
-export interface EventoDetalle {
-  id: string;
-  organizacionId: string;
-  organizacion: {
-    id: string;
-    nombre: string;
-    slug: string;
-    logoUrl: string | null;
-    descripcion: string | null;
-    emailContacto: string | null;
-  };
-  establecimientoId: string | null;
-  categoriaId: number;
-  categoria: { id: number; nombre: string; colorHex: string; tipo: string };
-  ubicacionId: string;
-  creadoPor: string;
+export interface PreguntaFrecuente {
   titulo: string;
-  descripcion: string;
-  fechaInicio: string;
-  fechaFin: string;
-  capacidadTotal: number;
-  imagenPrincipalUrl: string;
-  galeriaImagenes: string[];
-  restriccionAcceso: string;
-  etiquetas: string[];
-  presentadoPor: string | null;
-  preguntasFrecuentes: { pregunta: string; respuesta: string }[];
-  avisoAsistentes: string | null;
-  estado: string;
-  motivoRechazo: string | null;
-  createdAt: string;
-  updatedAt: string;
-  latitud: number | null;
-  longitud: number | null;
-  direccion: string | null;
-  ciudad: unknown;
-  localidades: Localidad[];
-  artistas: Artista[];
-  resenas: Resena[];
+  respuesta: string;
 }
 
 export interface Resena {
   id: string;
   eventoId: string;
   autorId: string;
-  autor: { id: string; nombreCompleto: string };
+  autor: Pick<User, 'id' | 'nombre' | 'apellido' | 'fotoPerfilUrl' | 'slug'>;
   puntuacion: number;
   comentario: string | null;
   estado: string;
+  createdAt: string;
+}
+
+export interface EventoDetalle {
+  id: string;
+  organizadorId: string;
+  organizador: User;
+  categoriaId: number;
+  categoria: Category;
+  ubicacionId: string | null;
+  creadoPor: string;
+  titulo: string;
+  descripcion: string;
+  fechaInicio: string;
+  fechaFin: string;
+  aforo: number;
+  imagenes: string[];
+  online: boolean;
+  linkOnline: string | null;
+  usuariosCartelera: CartelItem[];
+  restriccionAcceso: string;
+  etiquetas: string[];
+  visibilidad: string;
+  esGratuito: boolean;
+  localidades: Localidad[];
+  informacionPago: Record<string, unknown> | null;
+  preguntasFrecuentes: PreguntaFrecuente[];
+  estado: string;
+  motivoRechazo: string | null;
+  resenas: Resena[];
+  latitud: number | null;
+  longitud: number | null;
+  direccion: string | null;
+  ciudad:
+    | {
+        id: number;
+        nombre: string;
+        provincia?: { id: number; nombre: string } | null;
+      }
+    | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EstadoReserva =
+  | 'confirmada'
+  | 'verificada'
+  | 'cancelada'
+  | 'invalidada'
+  | 'reportada';
+
+export interface Reservation {
+  id: string;
+  eventoId: string;
+  usuarioId: string;
+  localidadNombre: string;
+  cantidadTickets: number;
+  codigoTicket: string;
+  qrPayload: string;
+  estado: EstadoReserva;
+  fechaReserva: string;
+  evento: {
+    id: string;
+    titulo: string;
+    imagenes: string[];
+    fechaInicio: string;
+    online: boolean;
+    linkOnline: string | null;
+    esGratuito: boolean;
+    categoria: Category;
+  };
   createdAt: string;
 }
 
@@ -132,58 +173,118 @@ export interface Favorito {
   id: string;
   usuarioId: string;
   eventoId: string;
-  evento: EventItem;
-  createdAt: string;
-}
-
-export interface Reservation {
-  id: string;
-  eventoId: string;
-  localidadId: string;
-  usuarioId: string;
-  cantidadTickets: number;
-  codigoTicket: string;
-  qrPayload: string;
-  estado: 'confirmada' | 'verificada' | 'cancelada';
-  fechaReserva: string;
   evento: {
     id: string;
     titulo: string;
-    imagenPrincipalUrl: string;
     fechaInicio: string;
-    organizacion: { id: string; nombre: string };
-    categoria: { id: number; nombre: string; colorHex: string };
+    imagenes: string[];
+    online: boolean;
+    estado: string;
+    categoria: Category | null;
   };
-  localidad: { id: string; nombre: string };
   createdAt: string;
 }
 
-export interface Organization {
+export interface PublicEvento {
   id: string;
-  nombre: string;
-  slug: string;
+  titulo: string;
   descripcion: string;
-  logoUrl: string;
-  emailContacto: string;
-  telefono: string;
+  fechaInicio: string;
+  fechaFin: string;
+  imagenes: string[];
+  online: boolean;
   estado: string;
-  calificacionPromedio: number;
+  esGratuito: boolean;
+  organizadorId: string;
+  categoriaId: number;
+  ubicacionId: string | null;
+  localidades: Localidad[];
 }
 
-export interface Establishment {
+export type EstadoEvento =
+  | 'borrador'
+  | 'pendiente'
+  | 'aprobado'
+  | 'rechazado'
+  | 'cancelado'
+  | 'finalizado';
+
+export interface EventoGestion {
   id: string;
-  nombreComercial: string;
+  organizadorId: string;
+  categoriaId: number;
+  categoria: Category | null;
+  ubicacionId: string | null;
+  creadoPor: string;
+  titulo: string;
   descripcion: string;
-  capacidadMaxima: number;
-  tipoEstablecimiento: string;
-  estado: string;
+  fechaInicio: string;
+  fechaFin: string;
+  aforo: number;
+  imagenes: string[];
+  online: boolean;
+  linkOnline: string | null;
+  usuariosCartelera: CartelItem[];
+  restriccionAcceso: string;
+  etiquetas: string[];
+  visibilidad: string;
+  esGratuito: boolean;
+  localidades: Localidad[];
+  informacionPago: Record<string, unknown> | null;
+  preguntasFrecuentes: PreguntaFrecuente[];
+  estado: EstadoEvento;
+  motivoRechazo: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface Category {
-  id: number;
+export interface ResumenResenasStats {
+  total: number;
+  promedio: number;
+  visible: number;
+  reportada: number;
+  oculta: number;
+  distribucion?: Record<number, number>;
+  '分布'?: Record<number, number>;
+}
+
+export interface StatLocalidad {
   nombre: string;
-  descripcion: string;
-  colorHex: string;
-  tipo: string;
-  estado: string;
+  totalReservas: number;
+  capacidad: number;
+  porcentajeOcupacion: number;
+}
+
+export interface EstadisticasEvento {
+  visitas: number;
+  reservas: number;
+  favoritos: number;
+  reseñas: ResumenResenasStats;
+  localidades: StatLocalidad[];
+  periodo: string;
+}
+
+export interface ScrapedEvento {
+  titulo: string | null;
+  descripcion: string | null;
+  imagenes: string[];
+  fechaInicio: string | null;
+  fechaFin: string | null;
+}
+
+export interface CategoriaConUsos extends Category {
+  usos: number;
+}
+
+export interface PublicProfile extends User {
+  eventos: PublicEvento[];
+  seguidores: number;
+}
+
+export interface SocialListResponse {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  items: User[];
 }

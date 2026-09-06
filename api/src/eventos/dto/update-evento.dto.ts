@@ -7,6 +7,8 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUrl,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -37,6 +39,7 @@ export class UpdateEventoDto {
   @IsOptional()
   @IsString()
   @MinLength(10)
+  @MaxLength(5000)
   descripcion?: string;
 
   @IsOptional()
@@ -49,7 +52,8 @@ export class UpdateEventoDto {
 
   @IsOptional()
   @IsInt()
-  @Min(0)
+  @Min(1)
+  @Max(50000)
   aforo?: number;
 
   @IsOptional()
@@ -60,6 +64,15 @@ export class UpdateEventoDto {
   @IsOptional()
   @IsBoolean()
   online?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @IsUrl(
+    {},
+    { message: 'El enlace del evento en línea debe ser una URL válida' },
+  )
+  linkOnline?: string;
 
   @IsOptional()
   @IsArray()

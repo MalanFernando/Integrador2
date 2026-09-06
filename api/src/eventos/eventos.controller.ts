@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { EventosService } from './eventos.service.js';
+import { ScrapingService } from '../scraping/scraping.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -19,7 +20,10 @@ import { UpdateEventoDto } from './dto/update-evento.dto.js';
 
 @Controller('eventos')
 export class EventosController {
-  constructor(private readonly eventosService: EventosService) {}
+  constructor(
+    private readonly eventosService: EventosService,
+    private readonly scrapingService: ScrapingService,
+  ) {}
 
   @Get()
   list(
@@ -54,6 +58,13 @@ export class EventosController {
   @UseGuards(JwtAuthGuard)
   myEvents(@CurrentUser() user: { id: string }) {
     return this.eventosService.myEvents(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('organizador', 'admin')
+  @Post('from-url')
+  async fromUrl(@Body('url') url: string) {
+    return this.scrapingService.scrapEventoDesdeUrl(url);
   }
 
   @Get(':id')

@@ -31,10 +31,30 @@ export class AuditoriaService {
     return this.auditoriaRepo.save(row);
   }
 
-  list(filters: { tablaAfectada?: string; limit?: number }) {
-    const where = filters.tablaAfectada
+  list(filters: {
+    tablaAfectada?: string;
+    limit?: number;
+    fechaDesde?: string;
+    fechaHasta?: string;
+  }) {
+    const where: Record<string, unknown> = filters.tablaAfectada
       ? { tablaAfectada: filters.tablaAfectada }
       : {};
+
+    if (filters.fechaDesde || filters.fechaHasta) {
+      where.createdAt = {};
+      if (filters.fechaDesde) {
+        (where.createdAt as Record<string, Date>).gte = new Date(
+          filters.fechaDesde,
+        );
+      }
+      if (filters.fechaHasta) {
+        (where.createdAt as Record<string, Date>).lte = new Date(
+          filters.fechaHasta,
+        );
+      }
+    }
+
     return this.auditoriaRepo.find({
       where,
       relations: { usuario: true },

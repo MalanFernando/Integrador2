@@ -4,10 +4,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { Seguidor } from './entities/seguidor.entity.js';
 import { Notificacion } from './entities/notificacion.entity.js';
 import { SeguirDto } from './dto/seguir.dto.js';
+
+export interface ListaSocialParams {
+  q?: string;
+  page?: number;
+  limit?: number;
+}
 
 @Injectable()
 export class SocialService {
@@ -45,15 +51,74 @@ export class SocialService {
     return { message: 'Ya no sigues este perfil' };
   }
 
-  async seguidores(seguidoId: string) {
-    const seguidores = await this.seguidoresRepo.find({
+  async seguidores(seguidoId: string, params: ListaSocialParams = {}) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(50, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const whereClause: Record<string, unknown> = { seguidoId };
+    if (params.q) {
+      whereClause.seguidor = Like(`%${params.q}%`);
+    }
+
+    const [seguidores, total] = await this.seguidoresRepo.findAndCount({
       where: { seguidoId },
       relations: { seguidor: true },
       order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
     });
+
+    let items = seguidores.map((s) => s.seguidor);
+
+    if (params.q) {
+      const q = params.q.toLowerCase();
+      items = items.filter(
+        (u) =>
+          u.nombre.toLowerCase().includes(q) ||
+          u.apellido.toLowerCase().includes(q),
+      );
+    }
+
     return {
-      total: seguidores.length,
-      items: seguidores.map((s) => s.seguidor),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      items,
+    };
+  }
+
+  async siguiendo(seguidorId: string, params: ListaSocialParams = {}) {
+    const page = Math.max(1, params.page ?? 1);
+    const limit = Math.min(50, Math.max(1, params.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const [siguiendo, total] = await this.seguidoresRepo.findAndCount({
+      where: { seguidorId },
+      relations: { seguido: true },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    let items = siguiendo.map((s) => s.seguido);
+
+    if (params.q) {
+      const q = params.q.toLowerCase();
+      items = items.filter(
+        (u) =>
+          u.nombre.toLowerCase().includes(q) ||
+          u.apellido.toLowerCase().includes(q),
+      );
+    }
+
+    return {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      items,
     };
   }
 

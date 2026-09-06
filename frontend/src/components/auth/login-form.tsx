@@ -1,62 +1,73 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
+import { API_URL } from '@/lib/api';
+import { loginSchema, type LoginValues } from '@/lib/validation';
 
 export function LoginForm() {
   const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = async (values: LoginValues) => {
     setError('');
-    setLoading(true);
     try {
-      await login(email, password);
+      await login(values.email.toLowerCase(), values.password);
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-    } finally {
-      setLoading(false);
     }
   };
 
+  function handleGoogleLogin() {
+    window.location.href = `${API_URL}/auth/google`;
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
       {error && (
         <div className="rounded-md bg-red-900/50 border border-red-800 p-3 text-sm text-red-300">
           {error}
         </div>
       )}
-      <div className="space-y-1">
-        <Input
-          id="email"
-          label="Correo electrónico"
-          type="email"
-          placeholder="usuario@ejemplo.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-1 relative">
+
+      <Input
+        id="email"
+        label="Correo electrónico"
+        type="email"
+        placeholder="usuario@ejemplo.com"
+        {...register('email')}
+        error={errors.email?.message}
+        required
+      />
+
+      <div className="relative">
         <Input
           id="password"
           label="Contraseña"
           type={showPassword ? 'text' : 'password'}
           placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          {...register('password')}
+          error={errors.password?.message}
           required
         />
         <button
@@ -67,21 +78,26 @@ export function LoginForm() {
           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+
       <div className="text-right">
         <Link href="/forgot-password" className="text-sm text-white underline hover:text-white/80">
           ¿Olvidaste tu contraseña?
         </Link>
       </div>
-      <Button type="submit" className="w-full bg-white text-black hover:bg-white/90" disabled={loading}>
-        {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
       </Button>
+
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-white/20" />
         <span className="flex-shrink mx-4 text-sm text-white/50">O continúa con</span>
         <div className="flex-grow border-t border-white/20" />
       </div>
+
       <button
         type="button"
+        onClick={handleGoogleLogin}
         className="w-full flex items-center justify-center gap-2 rounded-md border border-white/20 bg-white text-black h-12 px-4 text-sm font-medium hover:bg-white/90 transition-colors"
       >
         <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -92,6 +108,7 @@ export function LoginForm() {
         </svg>
         Google
       </button>
+
       <p className="text-center text-sm text-white/60">
         ¿Aún no tienes cuenta?{' '}
         <Link href="/register" className="text-white font-bold hover:underline">

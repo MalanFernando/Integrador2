@@ -2,319 +2,354 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import {
-  AlertTriangle,
-  Calendar,
-  ChevronRight,
-  Loader2,
-  MapPin,
-  Star,
-} from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/utils';
+import { formatDateTime } from '@/lib/format';
+import { EstadoBadge } from '@/components/ui/estado-badge';
+import { SelectField } from '@/components/ui/select-field';
 import type {
-  AdminEstablecimiento,
-  AdminResena,
-  AdminStats,
-  EventItem,
+  DashboardAdmin,
+  Reserva,
   PaginatedResult,
 } from '@/types';
-import { formatDate } from '@/lib/format';
+import {
+  Users,
+  CalendarDays,
+  Ticket,
+  Star,
+  AlertTriangle,
+  Activity,
+  Loader2,
+  ArrowRight,
+} from 'lucide-react';
 
-interface StatCard {
-  label: string;
-  value: number;
-  change: string;
-  color: 'green' | 'red';
-}
-
-interface AttentionItem {
-  key: string;
-  title: string;
-  description: string;
-  href?: string;
-}
+const FILTROS = [
+  { value: '', label: 'Todo el historial' },
+  { value: 'hoy', label: 'Hoy' },
+  { value: 'semana', label: 'Esta semana' },
+  { value: 'mes', label: 'Este mes' },
+];
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [pendientes, setPendientes] = useState<EventItem[]>([]);
-  const [reportadas, setReportadas] = useState<AdminResena[]>([]);
-  const [establecimientosPendientes, setEstablecimientosPendientes] = useState<
-    AdminEstablecimiento[]
-  >([]);
-  const [aprobados, setAprobados] = useState<EventItem[]>([]);
+  const [filtro, setFiltro] = useState('');
+  const [dashboard, setDashboard] = useState<DashboardAdmin | null>(null);
+  const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [now] = useState(() => Date.now());
+
+  const cargar = () => {
+    const params = new URLSearchParams();
+    if (filtro) params.set('filtro', filtro);
+    Promise.all([
+      api.get<DashboardAdmin>(`/admin/dashboard?${params.toString()}`),
+      api.get<PaginatedResult<Reserva>>('/admin/reservas?take=200'),
+    ])
+      .then(([data, reservasRes]) => {
+        setDashboard(data);
+        setReservas(reservasRes.items);
+      })
+      .catch((err) => setError((err as Error).message))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    Promise.all([
-      api.get<AdminStats>('/admin/estadisticas'),
-      api.get<PaginatedResult<EventItem>>('/admin/eventos?estado=pendiente'),
-      api.get<AdminResena[]>('/admin/resenas?estado=reportada'),
-      api.get<AdminEstablecimiento[]>('/admin/establecimientos'),
-      api.get<PaginatedResult<EventItem>>('/admin/eventos?estado=aprobado&limit=100'),
-    ])
-      .then(([s, p, r, est, ap]) => {
-        setStats(s);
-        setPendientes(p.items);
-        setReportadas(r);
-        setEstablecimientosPendientes(
-          est.filter((e) => e.estado === 'pendiente'),
-        );
-        setAprobados(ap.items);
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : 'Error al cargar los datos'),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+    cargar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtro]);
 
-  const cards: StatCard[] = stats
-    ? [
-        { label: 'Usuarios', value: stats.usuarios, change: 'Registrados', color: 'green' },
-        { label: 'Eventos', value: stats.eventos, change: `${stats.eventosAprobados} aprobados`, color: 'green' },
-        { label: 'Organizaciones', value: stats.organizaciones, change: 'Registradas', color: 'green' },
-        { label: 'Reservaciones', value: stats.reservas, change: 'Registradas', color: 'green' },
-        { label: 'Pendientes', value: stats.eventosPendientes, change: 'eventos por revisar', color: 'red' },
-      ]
-    : [];
+  const totalesLocalidad = useMemo(() => {
+    const mapa = new Map<string, Map<string, number>>();
+    for (const r of reservas) {
+      const porEvento = mapa.get(r.eventoId) ?? new Map<string, number>();
+      porEvento.set(
+        r.localidadNombre,
+        (porEvento.get(r.localidadNombre) ?? 0) + r.cantidadTickets,
+      );
+      mapa.set(r.eventoId, porEvento);
+    }
+    return mapa;
+  }, [reservas]);
 
-  const attentionItems: AttentionItem[] = useMemo(() => {
-    const items: AttentionItem[] = [];
-    pendientes.forEach((ev) =>
-      items.push({
-        key: `evento-${ev.id}`,
-        title: ev.titulo,
-        description: `Requiere aprobación · ${ev.organizacionNombre}`,
-        href: '/eventos',
-      }),
-    );
-    reportadas.forEach((r) =>
-      items.push({
-        key: `resena-${r.id}`,
-        title: `Reseña de ${r.autor?.nombreCompleto ?? 'usuario'}`,
-        description: r.motivoReporte
-          ? `Reportada: ${r.motivoReporte}`
-          : 'Reportada por contenido inapropiado',
-      }),
-    );
-    establecimientosPendientes.forEach((e) =>
-      items.push({
-        key: `establecimiento-${e.id}`,
-        title: e.nombreComercial,
-        description: 'Requiere aprobación de establecimiento',
-      }),
-    );
-    return items;
-  }, [pendientes, reportadas, establecimientosPendientes]);
+  const eventosReservados = useMemo(() => {
+    if (!dashboard) return [];
+    return dashboard.eventosReservados.map((ev) => ({
+      ...ev,
+      localidades: ev.localidades.map((loc) => ({
+        ...loc,
+        reservas: totalesLocalidad.get(ev.eventoId)?.get(loc.nombre) ?? 0,
+      })),
+    }));
+  }, [dashboard, totalesLocalidad]);
 
-  const proximos = useMemo(() => {
-    const upcoming = aprobados
-      .filter((ev) => new Date(ev.fechaInicio).getTime() >= now)
-      .slice(0, 6);
-    return upcoming.length > 0 ? upcoming : aprobados.slice(0, 6);
-  }, [aprobados, now]);
-
-  if (loading) {
+  function barra(label: string, valor: number, max: number, color?: string) {
+    const pct = max > 0 ? Math.round((valor / max) * 100) : 0;
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+      <div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-white/70">{label}</span>
+          <span className="text-white">{valor}</span>
+        </div>
+        <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={cn('h-full rounded-full', color ?? 'bg-white/70')}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
       </div>
     );
   }
 
+  const kpis = dashboard
+    ? [
+        { label: 'Usuarios', valor: dashboard.resumen.usuarios, icono: Users },
+        { label: 'Eventos', valor: dashboard.resumen.eventos, icono: CalendarDays },
+        { label: 'Reservas', valor: dashboard.resumen.reservas, icono: Ticket },
+        { label: 'Reseñas', valor: dashboard.resumen.resenas, icono: Star },
+        {
+          label: 'Reportes pendientes',
+          valor: dashboard.resumen.reportesPendientes,
+          icono: AlertTriangle,
+        },
+      ]
+    : [];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-clash text-2xl font-semibold text-white">
-            Resumen de la plataforma
+            Dashboard
           </h1>
-          <p className="mt-1 text-sm text-white/50">Quito, Ecuador</p>
+          <p className="mt-1 text-sm text-white/50">
+            Resumen del estado actual de la plataforma.
+          </p>
         </div>
-        <Link
-          href="/eventos"
-          className="inline-flex h-10 items-center gap-1 rounded-md border border-white/10 px-4 text-sm text-white/80 transition-colors hover:bg-white/5"
-        >
-          Revisar pendientes <ChevronRight className="h-4 w-4" />
-        </Link>
+        <div className="w-52">
+          <SelectField
+            label="Período"
+            value={filtro}
+            onChange={(v) => setFiltro(v)}
+            placeholder="Selecciona..."
+            options={FILTROS}
+          />
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-md border border-red-800 bg-red-950/60 p-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-4">
-        {cards.map((stat) => (
-          <div key={stat.label} className="border border-white/10 rounded-lg p-5">
-            <p className="text-[#848484] text-xs uppercase tracking-wide font-medium">
-              {stat.label}
-            </p>
-            <p className="mt-1 text-[40px] font-medium text-white">{stat.value}</p>
-            <p
-              className={`mt-1 text-sm ${
-                stat.color === 'red' ? 'text-[#C04C4C]' : 'text-[#45B46A]'
-              }`}
-            >
-              {stat.change}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex gap-6">
-        <div className="w-[463px] shrink-0">
-          <div className="border border-white/10 rounded-lg">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-[#F4A261]" />
-                <h2 className="font-clash text-lg font-semibold text-white">
-                  Requiere atención
-                </h2>
-              </div>
-              <span className="bg-[#F9E3E8] text-[#B44561] text-xs font-medium px-2.5 py-1 rounded-full">
-                {attentionItems.length} pendientes
-              </span>
-            </div>
-            <div>
-              {attentionItems.length === 0 ? (
-                <p className="p-5 text-sm text-white/50">
-                  No hay solicitudes pendientes por revisar.
-                </p>
-              ) : (
-                attentionItems.slice(0, 6).map((item) => (
-                  <div
-                    key={item.key}
-                    className="flex items-center justify-between p-4 border-b border-white/10 last:border-b-0"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {item.title}
-                      </p>
-                      <p className="mt-0.5 text-xs text-white/50">
-                        {item.description}
-                      </p>
-                    </div>
-                    {item.href ? (
-                      <Link
-                        href={item.href}
-                        className="ml-4 shrink-0 text-xs text-white/50 transition-colors hover:text-white"
-                      >
-                        Revisar
-                      </Link>
-                    ) : (
-                      <span className="ml-4 shrink-0 text-xs text-white/30">
-                        En revisión
-                      </span>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-white/50" />
         </div>
+      ) : dashboard ? (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {kpis.map((k) => (
+              <div
+                key={k.label}
+                className="rounded-lg border border-white/10 bg-black/40 p-5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/50">{k.label}</span>
+                  <k.icono className="h-5 w-5 text-white/50" />
+                </div>
+                <p className="mt-2 font-clash text-3xl font-semibold text-white">
+                  {k.valor}
+                </p>
+              </div>
+            ))}
+          </div>
 
-        <div className="flex-1">
-          <div className="border border-white/10 rounded-lg">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <h2 className="font-clash text-lg font-semibold text-white">
-                Próximos eventos aprobados
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-lg border border-white/10 bg-black/40 p-5 lg:col-span-2">
+              <h2 className="mb-4 font-medium text-white">
+                Eventos por categoría
+              </h2>
+              <div className="space-y-3">
+                {dashboard.eventosPorCategoria.length === 0 ? (
+                  <p className="text-sm text-white/40">Sin datos</p>
+                ) : (
+                  dashboard.eventosPorCategoria.map((c) =>
+                    barra(
+                      c.categoria,
+                      c.total,
+                      Math.max(
+                        ...dashboard.eventosPorCategoria.map((x) => x.total),
+                      ),
+                      c.colorHex ?? undefined,
+                    ),
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-white/10 bg-black/40 p-5">
+              <h2 className="mb-4 font-medium text-white">
+                Estado de organizadores
+              </h2>
+              <div className="space-y-3">
+                {dashboard.estadoOrganizadores.length === 0 ? (
+                  <p className="text-sm text-white/40">Sin datos</p>
+                ) : (
+                  dashboard.estadoOrganizadores.map((e) =>
+                    barra(
+                      e.estado,
+                      e.total,
+                      Math.max(
+                        ...dashboard.estadoOrganizadores.map((x) => x.total),
+                      ),
+                    ),
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/40 p-5">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 font-medium text-white">
+                <AlertTriangle className="h-4 w-4 text-[#C07A2D]" />
+                Necesitan atención
               </h2>
               <Link
                 href="/eventos"
-                className="text-xs text-white/50 transition-colors hover:text-white"
+                className="flex items-center gap-1 text-sm text-white/60 hover:text-white"
               >
-                Ver todos
+                Ver eventos
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <div>
-              {proximos.length === 0 ? (
-                <p className="p-5 text-sm text-white/50">
-                  No hay eventos aprobados todavía.
-                </p>
-              ) : (
-                proximos.map((ev) => (
+            {dashboard.eventosAtencion.length === 0 ? (
+              <p className="mt-3 text-sm text-white/40">
+                No hay eventos que necesiten atención
+              </p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {dashboard.eventosAtencion.map((ev) => (
                   <div
-                    key={ev.id}
-                    className="flex items-center gap-4 p-4 border-b border-white/10 last:border-b-0"
+                    key={`${ev.id}-${ev.motivo}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-white/10 p-3"
                   >
-                    <div className="h-10 w-10 rounded-md bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
-                      {ev.imagenPrincipalUrl ? (
-                        <img
-                          src={ev.imagenPrincipalUrl}
-                          alt={ev.titulo}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Calendar className="h-5 w-5 text-white/50" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-white">
                         {ev.titulo}
                       </p>
-                      <p className="mt-0.5 text-xs text-white/50">
-                        {ev.organizacionNombre}
+                      <p className="truncate text-xs text-white/50">
+                        {ev.organizador} · {ev.motivo}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-white/50 shrink-0">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {formatDate(ev.fechaInicio)}
+                    <div className="flex items-center gap-3">
+                      <EstadoBadge value={ev.estado} />
+                      <span className="text-xs text-white/40">
+                        {formatDateTime(ev.createdAt)}
+                      </span>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-6">
-        <div className="flex-1">
-          <div className="border border-white/10 rounded-lg">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <Star className="h-5 w-5 text-white/50" />
-                <h2 className="font-clash text-lg font-semibold text-white">
-                  Accesos rápidos
-                </h2>
+                ))}
               </div>
-            </div>
-            <div className="grid grid-cols-4 gap-4 p-5">
-              <Link
-                href="/usuarios"
-                className="rounded-lg border border-white/10 p-5 transition-colors hover:bg-white/5"
-              >
-                <p className="text-sm font-medium text-white">Usuarios</p>
-                <p className="mt-1 text-xs text-white/50">Gestionar cuentas</p>
-              </Link>
-              <Link
-                href="/organizaciones"
-                className="rounded-lg border border-white/10 p-5 transition-colors hover:bg-white/5"
-              >
-                <p className="text-sm font-medium text-white">Organizaciones</p>
-                <p className="mt-1 text-xs text-white/50">Aprobar y suspender</p>
-              </Link>
-              <Link
-                href="/eventos"
-                className="rounded-lg border border-white/10 p-5 transition-colors hover:bg-white/5"
-              >
-                <p className="text-sm font-medium text-white">Eventos</p>
-                <p className="mt-1 text-xs text-white/50">Revisar y moderar</p>
-              </Link>
-              <Link
-                href="/establecimientos"
-                className="rounded-lg border border-white/10 p-5 transition-colors hover:bg-white/5"
-              >
-                <p className="text-sm font-medium text-white">Establecimientos</p>
-                <p className="mt-1 text-xs text-white/50">Aprobar y suspender</p>
-              </Link>
-            </div>
+            )}
           </div>
-        </div>
-      </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/40 p-5">
+            <h2 className="mb-4 font-medium text-white">
+              Eventos más reservados
+            </h2>
+            {eventosReservados.length === 0 ? (
+              <p className="text-sm text-white/40">Sin reservas</p>
+            ) : (
+              <div className="space-y-3">
+                {eventosReservados.map((ev) => (
+                  <div
+                    key={ev.eventoId}
+                    className="rounded-md border border-white/10 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-white">{ev.titulo}</p>
+                        <p className="text-xs text-white/50">{ev.organizador}</p>
+                      </div>
+                      <div className="flex gap-4 text-sm">
+                        <span className="text-white/70">
+                          {ev.totalReservas} reservas
+                        </span>
+                        <span className="text-white/70">
+                          {ev.totalTickets} tickets
+                        </span>
+                      </div>
+                    </div>
+                    {ev.localidades.length > 0 && (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {ev.localidades.map((loc) => {
+                          const pct =
+                            loc.capacidad > 0
+                              ? Math.min(
+                                  100,
+                                  Math.round(
+                                    ((loc.reservas ?? 0) / loc.capacidad) * 100,
+                                  ),
+                                )
+                              : 0;
+                          return (
+                            <div
+                              key={loc.nombre}
+                              className="rounded-md bg-white/5 p-3"
+                            >
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-white/70">{loc.nombre}</span>
+                                <span className="text-[#45B46A]">
+                                  {(loc.reservas ?? 0)}/{loc.capacidad}
+                                </span>
+                              </div>
+                              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                                <div
+                                  className="h-full rounded-full bg-[#45B46A]"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/40 p-5">
+            <h2 className="mb-4 flex items-center gap-2 font-medium text-white">
+              <Activity className="h-4 w-4 text-white/60" />
+              Actividad reciente
+            </h2>
+            {dashboard.actividadReciente.length === 0 ? (
+              <p className="text-sm text-white/40">Sin actividad</p>
+            ) : (
+              <div className="space-y-3">
+                {dashboard.actividadReciente.map((a) => (
+                  <div key={a.id} className="flex items-start gap-3 text-sm">
+                    <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-white/40" />
+                    <div className="flex-1">
+                      <p className="text-white/80">
+                        <span className="text-white">{a.usuario}</span> —{' '}
+                        {a.accion}
+                      </p>
+                      <p className="text-xs text-white/50">
+                        {a.descripcion} · {a.tablaAfectada} ·{' '}
+                        {formatDateTime(a.fecha)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

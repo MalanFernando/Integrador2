@@ -13,6 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { AddMemberDto } from './dto/add-member.dto.js';
 import { UpdateMemberDto } from './dto/update-member.dto.js';
+import { CrearResenaPerfilDto } from './dto/crear-resena-perfil.dto.js';
 
 @Controller('organizadores')
 export class OrganizacionesController {
@@ -64,5 +65,20 @@ export class OrganizacionesController {
       user.id,
       user.rol,
     );
+  }
+
+  @Get(':id/eventos')
+  listEventosDelOrganizador(@Param('id') id: string) {
+    return this.organizacionesService.listEventosDelOrganizador(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/resenas')
+  crearResena(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() dto: CrearResenaPerfilDto,
+  ) {
+    return this.organizacionesService.crearResenaDesdePerfil(id, user.id, dto);
   }
 }

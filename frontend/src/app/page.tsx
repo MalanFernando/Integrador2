@@ -5,7 +5,7 @@ import { Footer } from '@/components/layout/footer';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import type { EventItem } from '@/types';
 
@@ -27,6 +27,13 @@ function formatDate(dateStr: string): string {
   return `${dia} ${meses[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
+function formatHora(dateStr: string): string {
+  const d = new Date(dateStr);
+  const horas = d.getHours().toString().padStart(2, '0');
+  const minutos = d.getMinutes().toString().padStart(2, '0');
+  return `${horas}:${minutos}`;
+}
+
 export default function HomePage() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +45,11 @@ export default function HomePage() {
       .catch(() => setEvents([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const upcoming = useMemo(
+    () => events.filter((e) => new Date(e.fechaFin) >= new Date()),
+    [events],
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
@@ -117,7 +129,7 @@ export default function HomePage() {
                   <div key={i} className="overflow-hidden h-[400px] bg-white/5 animate-pulse" />
                 ))}
               {!loading &&
-                events.map((event, i) => {
+                upcoming.map((event, i) => {
                   const rots = [3, -4, 2, -2];
                   return (
                   <Link key={event.id} href={`/eventos/${event.id}`} className="block group">
@@ -127,22 +139,24 @@ export default function HomePage() {
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-purple-900/60 via-black/80 to-black" />
                       <img
-                        src={event.imagenPrincipalUrl}
+                        src={event.imagenes[0] || '/images/event1.jpg'}
                         alt={event.titulo}
                         className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-70"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
                       <div className="absolute top-3 left-3 z-10">
-                        <span className="inline-flex items-center rounded-full bg-[#EAF9E3] px-2.5 py-0.5 text-xs font-medium text-[#45B46A]">
-                          Free
-                        </span>
+                        {event.online && (
+                          <span className="inline-flex items-center rounded-full bg-blue-600 px-2.5 py-0.5 text-xs font-medium text-white">
+                            En línea
+                          </span>
+                        )}
                       </div>
                       <button className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors">
                         <Heart className="h-4 w-4 text-white" />
                       </button>
                       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 to-transparent">
                         <p className="text-[#FF8E1C] text-sm font-medium">
-                          {formatDate(event.fechaInicio)} • 20:00 PM
+                          {formatDate(event.fechaInicio)} • {formatHora(event.fechaInicio)}
                         </p>
                         <h3 className="text-white text-lg font-bold mt-1 font-clash">
                           {event.titulo}
@@ -152,7 +166,7 @@ export default function HomePage() {
                   </Link>
                   );
                 })}
-              {!loading && events.length === 0 && (
+              {!loading && upcoming.length === 0 && (
                 <p className="col-span-full text-white/50 text-center">
                   No hay eventos disponibles
                 </p>

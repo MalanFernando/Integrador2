@@ -2,12 +2,11 @@
 
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Heart, Calendar } from 'lucide-react';
+import { Globe, Heart, MapPin, Calendar } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import type { Favorito } from '@/types';
@@ -21,7 +20,6 @@ function formatFecha(dateStr: string): string {
 
 export default function FavoritosPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +34,11 @@ export default function FavoritosPage() {
       .catch(() => setFavoritos([]))
       .finally(() => setLoading(false));
   }, [user]);
+
+  const activos = useMemo(
+    () => favoritos.filter((f) => new Date(f.evento.fechaInicio) >= new Date()),
+    [favoritos],
+  );
 
   const removeFavorito = async (eventoId: string) => {
     try {
@@ -72,23 +75,23 @@ export default function FavoritosPage() {
             <div>
               <h1 className="font-clash text-2xl font-semibold text-white">Mis favoritos</h1>
               <p className="text-sm text-white/50 mt-1">
-                {loading ? 'Cargando...' : `${favoritos.length} eventos guardados`}
+                {loading ? 'Cargando...' : `${activos.length} eventos guardados`}
               </p>
             </div>
           </div>
 
-          {!loading && favoritos.length === 0 && (
+          {!loading && activos.length === 0 && (
             <p className="text-white/50 text-center py-16">
               Aún no tienes eventos guardados
             </p>
           )}
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {favoritos.map((fav) => (
+            {activos.map((fav) => (
               <Card key={fav.id} className="overflow-hidden border border-white/10 bg-transparent transition-shadow group">
                 <div className="relative h-48 bg-white/5 overflow-hidden">
                   <img
-                    src={fav.evento.imagenPrincipalUrl}
+                    src={fav.evento.imagenes[0] || '/images/event1.jpg'}
                     alt={fav.evento.titulo}
                     className="h-full w-full object-cover"
                   />
@@ -106,19 +109,18 @@ export default function FavoritosPage() {
                         {fav.evento.titulo}
                       </CardTitle>
                     </Link>
+                    {fav.evento.categoria ? (
                     <Badge variant="info" className="bg-white/10 text-white/70">
-                      {fav.evento.categoriaNombre}
+                      {fav.evento.categoria.nombre}
                     </Badge>
+                  ) : null}
                   </div>
-                  <CardDescription className="text-white/50">
-                    {fav.evento.organizacionNombre}
-                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1 text-white/50">
-                      <MapPin className="h-4 w-4" />
-                      <span>Quito</span>
+                      {fav.evento.online ? <Globe className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+                      <span>{fav.evento.online ? 'En línea' : 'Presencial'}</span>
                     </div>
                     <div className="flex items-center gap-1 text-white/40">
                       <Calendar className="h-3.5 w-3.5" />

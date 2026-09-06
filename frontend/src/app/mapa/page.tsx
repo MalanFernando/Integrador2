@@ -4,16 +4,14 @@ import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { Search, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
-import type { EventItem } from '@/types';
+import type { Category, EventItem } from '@/types';
 
 const EventMap = dynamic(
   () => import('@/components/map/event-map').then((m) => ({ default: m.EventMap })),
   { ssr: false },
 );
-
-const categorias = ['Todos', 'Música', 'Teatro', 'Feria', 'Dj', 'Comedia', 'Social', 'Concierto', 'Pintura', 'Deporte', 'Negocios', 'Gaming', 'Category event'];
 
 const mapLabels = [
   { text: 'Dj', top: '25%', left: '30%' },
@@ -24,19 +22,39 @@ const mapLabels = [
 
 export default function MapaPage() {
   const [events, setEvents] = useState<EventItem[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [categorias, setCategorias] = useState<Category[]>([]);
+  const [selectedCategoria, setSelectedCategoria] = useState('Todos');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     api
       .get<{ items: EventItem[]; total: number }>('/eventos?limit=50')
       .then((res) => {
-        setEvents(res.items.filter((e) => e.latitud != null && e.longitud != null));
-        setTotal(res.total);
+        setEvents(res.items.filter((e) => e.latitud != null && e.longitud != null && new Date(e.fechaFin) >= new Date()));
       })
       .catch(() => setEvents([]))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    api
+      .get<Category[]>('/categorias')
+      .then(setCategorias)
+      .catch(() => setCategorias([]));
+  }, []);
+
+  const chips = useMemo(() => ['Todos', ...categorias.map((c) => c.nombre)], [categorias]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return events.filter((e) => {
+      const matchesQ = !q || e.titulo.toLowerCase().includes(q);
+      const matchesCat =
+        selectedCategoria === 'Todos' || e.categoriaNombre === selectedCategoria;
+      return matchesQ && matchesCat;
+    });
+  }, [events, search, selectedCategoria]);
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
@@ -48,6 +66,8 @@ export default function MapaPage() {
             <input
               className="w-full h-10 bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-white/30"
               placeholder="Buscar por nombre, artista o lugar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <div className="flex flex-wrap items-center gap-3 mb-6">
@@ -65,11 +85,12 @@ export default function MapaPage() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2 mb-8">
-            {categorias.map((cat, i) => (
+            {chips.map((cat) => (
               <button
                 key={cat}
+                onClick={() => setSelectedCategoria(cat)}
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  i === 0
+                  cat === selectedCategoria
                     ? 'bg-white text-black'
                     : 'bg-[#222] text-white hover:bg-[#333]'
                 }`}
@@ -85,7 +106,7 @@ export default function MapaPage() {
                 Eventos Populares en Quito
               </h2>
               <p className="text-white/50 text-sm mt-1">
-                {loading ? 'Cargando...' : `${total} Eventos encontrados`}
+                {loading ? 'Cargando...' : `${filtered.length} Eventos encontrados`}
               </p>
             </div>
             <div className="flex gap-2">
@@ -103,7 +124,7 @@ export default function MapaPage() {
               {loading ? (
                 <div className="h-[500px] bg-white/5 animate-pulse" />
               ) : (
-                <EventMap events={events} height="500px" />
+                <EventMap events={filtered} height="500px" />
               )}
             </div>
             {mapLabels.map((label, i) => (

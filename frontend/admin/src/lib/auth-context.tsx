@@ -11,18 +11,20 @@ import {
 import { api } from './api';
 import type { User, AuthResponse } from '@/types';
 
-interface RegisterData {
+export interface RegisterData {
   email: string;
   password: string;
-  nombreCompleto: string;
+  nombre: string;
+  apellido?: string;
   telefono?: string;
+  cedula?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: RegisterData) => Promise<User>;
   logout: () => void;
 }
 
@@ -52,12 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<AuthResponse>('/auth/login', { email, password });
     api.setToken(res.access_token);
     setUser(res.user);
+    return res.user;
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
     const res = await api.post<AuthResponse>('/auth/register', data);
     api.setToken(res.access_token);
     setUser(res.user);
+    return res.user;
   }, []);
 
   const logout = useCallback(() => {

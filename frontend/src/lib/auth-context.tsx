@@ -14,8 +14,10 @@ import type { User, AuthResponse } from '@/types';
 interface RegisterData {
   email: string;
   password: string;
-  nombreCompleto: string;
+  nombre: string;
+  apellido?: string;
   telefono?: string;
+  cedula?: string;
 }
 
 interface AuthContextType {
@@ -24,6 +26,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  updateUser: (user: User) => void;
+  setAuthFromCallback: (token: string, user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -65,8 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((user: User) => {
+    setUser({ ...user } as User);
+  }, []);
+
+  const setAuthFromCallback = useCallback((token: string, user: User) => {
+    api.setToken(token);
+    setUser(user);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser, setAuthFromCallback }}>
       {children}
     </AuthContext.Provider>
   );

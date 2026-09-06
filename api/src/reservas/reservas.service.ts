@@ -56,6 +56,19 @@ export class ReservasService {
         throw new NotFoundException('Localidad no encontrada en este evento');
       }
 
+      const ticketsReservados: Array<{ total: number }> = await manager.query(
+        `SELECT COALESCE(SUM(cantidad_tickets), 0)::int AS total
+           FROM reservas
+           WHERE evento_id = $1 AND localidad_nombre = $2 AND estado != 'cancelada'`,
+        [dto.eventoId, dto.localidadNombre],
+      );
+      const disponibles = localidad.aforo - (ticketsReservados[0]?.total ?? 0);
+      if (dto.cantidadTickets > disponibles) {
+        throw new BadRequestException(
+          `No hay suficientes tickets disponibles. Quedan ${disponibles} para "${localidad.nombre}".`,
+        );
+      }
+
       const codigoTicket = await this.generarCodigoUnico(manager);
       const reserva = manager.getRepository(Reserva).create({
         eventoId: dto.eventoId,
@@ -106,7 +119,7 @@ export class ReservasService {
     return this.reservasRepo.save(reserva);
   }
 
-  async verificar(id: string, adminId: string) {
+  async verificar(id: string, adminId: string, motivo: string) {
     const reserva = await this.reservasRepo.findOne({ where: { id } });
     if (!reserva) throw new NotFoundException('Reserva no encontrada');
     if (reserva.estado !== 'confirmada')
@@ -114,6 +127,8 @@ export class ReservasService {
     reserva.estado = 'verificada';
     reserva.fechaVerificacion = new Date();
     reserva.verificadoPor = adminId;
+    reserva.intervenidoPor = adminId;
+    reserva.motivoIntervencion = motivo;
     return this.reservasRepo.save(reserva);
   }
 
