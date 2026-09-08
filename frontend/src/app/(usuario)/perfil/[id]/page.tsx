@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { compartirEvento } from '@/lib/share';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useState } from 'react';
 import { ProfileHero, ProfileHead, ProfileTabs, ProfileEventCard } from '@/components/profile';
 import type { ProfileStat, ProfileEventCardData } from '@/components/profile';
 import { SeguidoresModal } from '@/components/social/seguidores-modal';
@@ -31,7 +31,7 @@ export default function PerfilPublicoPage() {
     const isNumeric = /^\d+$/.test(params.id);
 
     if (isNumeric) {
-      setResolvedId(params.id);
+      startTransition(() => setResolvedId(params.id));
       api
         .get<PublicProfile>(`/usuarios/perfil/${params.id}`)
         .then((data) => {

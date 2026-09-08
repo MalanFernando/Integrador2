@@ -26,7 +26,6 @@ export default function ConfiguracionPage() {
     api
       .get<ConfiguracionPlataforma>('/admin/configuracion')
       .then((data) => {
-        setConfig(data);
         setNombrePlataforma(data.nombrePlataforma);
         setContactoSoporte(data.contactoSoporte);
         setMoneda(data.moneda);
@@ -46,12 +45,11 @@ export default function ConfiguracionPage() {
     setError('');
     setMensaje('');
     try {
-      const actualizado = await api.put<ConfiguracionPlataforma>('/admin/configuracion', {
+      await api.put<ConfiguracionPlataforma>('/admin/configuracion', {
         nombrePlataforma,
         contactoSoporte: contactoSoporte || undefined,
         moneda,
       });
-      setConfig(actualizado);
       setMensaje('Configuración guardada correctamente');
     } catch (err) {
       setError((err as Error).message);

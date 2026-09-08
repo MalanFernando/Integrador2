@@ -1,4 +1,4 @@
-﻿
+
 -- 1. ACTIVACIÓN DE EXTENSIONES
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS postgis;
@@ -50,6 +50,7 @@ DROP TABLE IF EXISTS planes CASCADE;
 DROP TABLE IF EXISTS ubicaciones CASCADE;
 DROP TABLE IF EXISTS ciudades CASCADE;
 DROP TABLE IF EXISTS provincias CASCADE;
+DROP TABLE IF EXISTS configuracion_plataforma CASCADE;
 
 
 -- =============================================================================
@@ -60,7 +61,7 @@ DROP TYPE IF EXISTS rol_usuario_enum CASCADE;
 CREATE TYPE rol_usuario_enum AS ENUM ('admin', 'organizador', 'usuario');
 
 DROP TYPE IF EXISTS estado_usuario_enum CASCADE;
-CREATE TYPE estado_usuario_enum AS ENUM ('activo', 'suspendido', 'inactivo');
+CREATE TYPE estado_usuario_enum AS ENUM ('activo', 'suspendido', 'inactivo', 'pendiente');
 
 DROP TYPE IF EXISTS rol_organizacion_enum CASCADE;
 CREATE TYPE rol_organizacion_enum AS ENUM ('editor', 'moderador');
@@ -88,6 +89,9 @@ CREATE TYPE estado_reporte_reserva_enum AS ENUM ('pendiente', 'revisado', 'deses
 
 DROP TYPE IF EXISTS estado_suscripcion_enum CASCADE;
 CREATE TYPE estado_suscripcion_enum AS ENUM ('activa', 'cancelada', 'expirada', 'suspendida');
+
+DROP TYPE IF EXISTS perfil_activo_enum CASCADE;
+CREATE TYPE perfil_activo_enum AS ENUM ('usuario', 'organizador');
 
 
 -- =============================================================================
@@ -151,6 +155,7 @@ CREATE TABLE usuarios (
     nombre VARCHAR(150) NOT NULL,
     apellido VARCHAR(150) NOT NULL DEFAULT '',
     telefono VARCHAR(20),
+    cedula VARCHAR(10),
     foto_perfil_url TEXT,
     foto_portada TEXT,
     biografia TEXT,
@@ -160,12 +165,14 @@ CREATE TABLE usuarios (
     rol rol_usuario_enum NOT NULL DEFAULT 'usuario',
     estado estado_usuario_enum NOT NULL DEFAULT 'activo',
     plan_id INT NULL REFERENCES planes(id) ON DELETE SET NULL,
+    ultimo_acceso TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
     deleted_by BIGINT NULL REFERENCES usuarios(id),
     fecha_eliminacion TIMESTAMPTZ NULL,
-    slug VARCHAR(100) NULL UNIQUE
+    slug VARCHAR(100) NULL UNIQUE,
+    perfil_activo perfil_activo_enum NOT NULL DEFAULT 'usuario'
 );
 
 CREATE TABLE preferencias_usuario (
@@ -195,6 +202,20 @@ CREATE TABLE password_reset_tokens (
 
 CREATE INDEX idx_password_reset_token ON password_reset_tokens(token);
 CREATE INDEX idx_password_reset_usuario ON password_reset_tokens(usuario_id);
+
+DROP TABLE IF EXISTS email_verification_codes CASCADE;
+CREATE TABLE email_verification_codes (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    codigo_hash VARCHAR(60) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    intentos INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_email_verif_usuario ON email_verification_codes(usuario_id);
+CREATE INDEX idx_email_verif_codigo_hash ON email_verification_codes(codigo_hash);
 
 
 -- =============================================================================
@@ -271,6 +292,8 @@ CREATE TABLE eventos (
     estado estado_evento_enum NOT NULL DEFAULT 'borrador',
     revisado_por BIGINT NULL REFERENCES usuarios(id),
     motivo_rechazo TEXT,
+    motivo_oculto TEXT,
+    motivo_eliminado TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMPTZ NULL,
@@ -306,7 +329,9 @@ CREATE TABLE reservas (
     intervenido_por BIGINT NULL REFERENCES usuarios(id),
     motivo_intervencion TEXT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL,
+    deleted_by BIGINT NULL REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
 CREATE TABLE resenas (
@@ -319,6 +344,8 @@ CREATE TABLE resenas (
     motivo_reporte TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ NULL,
+    deleted_by BIGINT NULL REFERENCES usuarios(id) ON DELETE SET NULL,
     CONSTRAINT uk_autor_evento UNIQUE (autor_id, evento_id)
 );
 
@@ -384,6 +411,13 @@ CREATE TABLE bitacora_auditoria (
     detalles_antes_despues JSONB DEFAULT '{}'::jsonb,
     ip_address VARCHAR(45),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE configuracion_plataforma (
+    clave VARCHAR(100) PRIMARY KEY,
+    valor TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by BIGINT NULL REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
 

@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { compartirEvento } from '@/lib/share';
 import dynamic from 'next/dynamic';
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { EventImagePlaceholder } from '@/components/ui/event-image-placeholder';
 import { HeartButton } from '@/components/ui/heart-button';
@@ -186,7 +186,7 @@ function MapaPageContent() {
     if (fechaDesde) params.set('fechaDesde', fechaDesde);
     if (fechaHasta) params.set('fechaHasta', fechaHasta);
 
-    setLoading(true);
+    startTransition(() => setLoading(true));
     api
       .get<{ items: EventItem[]; total: number }>(`/eventos?${params.toString()}`)
       .then((res) => {

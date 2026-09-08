@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { compartirEvento } from '@/lib/share';
 import { useAuth } from '@/lib/auth-context';
@@ -108,8 +108,8 @@ export default function EventoDetallePage() {
   useEffect(() => {
     const orgId = evento?.organizador?.id;
     if (!orgId) return;
-    setPastReviewsLoading(true);
-    setPastReviewsError('');
+    startTransition(() => setPastReviewsLoading(true));
+    startTransition(() => setPastReviewsError(''));
     api
       .get<Resena[]>(`/organizadores/${orgId}/resenas?soloPasados=true`)
       .then((data) => setPastReviews(data))

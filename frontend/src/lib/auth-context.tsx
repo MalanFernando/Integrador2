@@ -1,5 +1,6 @@
 'use client';
 
+import { startTransition } from 'react';
 import {
   createContext,
   useContext,
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem(PERFIL_STORAGE_KEY) as PerfilActivo | null;
     if (stored === 'organizador' || stored === 'usuario') {
-      setPerfilActivoState(stored);
+      startTransition(() => setPerfilActivoState(stored));
     }
     const token = api.initToken();
     if (token) {
