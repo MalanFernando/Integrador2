@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { AuthProvider } from '@/lib/auth-context';
 
 export const metadata: Metadata = {
-  title: 'Hasta la Vuelta - Farrapp',
+  title: 'Hasta la Vuelta',
   description: 'Descubre eventos, bares y cultura en tu ciudad',
 };
 

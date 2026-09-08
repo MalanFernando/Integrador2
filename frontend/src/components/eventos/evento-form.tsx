@@ -565,7 +565,7 @@ export function EventoForm({
               <input
                 id="fechaInicio"
                 type="datetime-local"
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                className="flex h-10 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                 {...register('fechaInicio')}
               />
               {errors.fechaInicio && (
@@ -585,7 +585,7 @@ export function EventoForm({
               <input
                 id="fechaFin"
                 type="datetime-local"
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                className="flex h-10 w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                 {...register('fechaFin')}
               />
               {errors.fechaFin && (
@@ -623,7 +623,6 @@ export function EventoForm({
               id="descripcion"
               rows={5}
               placeholder="Describe tu evento (mínimo 10 caracteres)"
-              className="bg-white"
               {...register('descripcion')}
             />
             {errors.descripcion && (
@@ -1079,7 +1078,6 @@ export function EventoForm({
               />
               <Textarea
                 placeholder="Respuesta"
-                className="bg-white"
                 error={errors.preguntasFrecuentes?.[index]?.respuesta?.message}
                 {...register(`preguntasFrecuentes.${index}.respuesta`)}
               />

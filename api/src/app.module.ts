@@ -44,6 +44,7 @@ import { ReporteEvento } from './reportes/entities/reporte-evento.entity.js';
 import { ReporteReserva } from './reportes-reservas/entities/reporte-reserva.entity.js';
 import { PreferenciaUsuario } from './preferencias/entities/preferencia-usuario.entity.js';
 import { EventVisita } from './eventos/estadisticas/event-visita.entity.js';
+import { ConfiguracionPlataforma } from './admin/entities/configuracion-plataforma.entity.js';
 import { HealthController } from './common/controllers/health.controller.js';
 
 @Module({
@@ -88,6 +89,7 @@ import { HealthController } from './common/controllers/health.controller.js';
           ReporteReserva,
           PreferenciaUsuario,
           EventVisita,
+          ConfiguracionPlataforma,
         ],
         synchronize: false,
       }),

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatUltimoAcceso, estadoUsuarioVisual } from '@/lib/format';
+import { exportToCsv } from '@/lib/export';
 import { EstadoBadge } from '@/components/ui/estado-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,11 +16,18 @@ import {
   UserPlus,
   Users,
   Briefcase,
+  ShieldCheck,
   ShieldOff,
+  ShieldAlert,
+  Trash2 as Trash2Icon,
   Pencil,
   Trash2,
   Loader2,
+  FileDown,
 } from 'lucide-react';
+
+type Sort = '' | 'az' | 'za';
+type FiltroEstadoUi = EstadoUsuario | 'eliminado' | '';
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<AdminUsuario[]>([]);
@@ -28,8 +36,9 @@ export default function UsuariosPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [filtroRol, setFiltroRol] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstadoUi>('');
   const [busqueda, setBusqueda] = useState('');
+  const [sort, setSort] = useState<Sort>('');
 
   const [estadoLoadingId, setEstadoLoadingId] = useState<string | null>(null);
   const [eliminarUsuario, setEliminarUsuario] = useState<AdminUsuario | null>(
@@ -40,7 +49,7 @@ export default function UsuariosPage() {
   useEffect(() => {
     let active = true;
     api
-      .get<AdminUsuario[]>('/admin/usuarios?take=200')
+      .get<AdminUsuario[]>('/admin/usuarios?take=500&incluirEliminados=true')
       .then((data) => {
         if (active) setUsuarios(data);
       })
@@ -57,20 +66,30 @@ export default function UsuariosPage() {
 
   const resumen = useMemo(() => {
     const total = usuarios.length;
+    const activos = usuarios.filter(
+      (u) => !u.deletedAt && u.estado === 'activo',
+    ).length;
     const organizadores = usuarios.filter(
-      (u) => u.rol === 'organizador',
+      (u) => !u.deletedAt && u.rol === 'organizador',
+    ).length;
+    const admins = usuarios.filter(
+      (u) => !u.deletedAt && u.rol === 'admin',
+    ).length;
+    const inactivos = usuarios.filter(
+      (u) => !u.deletedAt && u.estado === 'inactivo',
     ).length;
     const suspendidos = usuarios.filter(
-      (u) => u.estado === 'suspendido',
+      (u) => !u.deletedAt && u.estado === 'suspendido',
     ).length;
-    return { total, organizadores, suspendidos };
+    const eliminados = usuarios.filter((u) => u.deletedAt).length;
+    return { total, activos, organizadores, admins, inactivos, suspendidos, eliminados };
   }, [usuarios]);
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return usuarios.filter((u) => {
+    let result = usuarios.filter((u) => {
       if (filtroRol && u.rol !== filtroRol) return false;
-      if (filtroEstado && u.estado !== filtroEstado) return false;
+      if (filtroEstado && estadoUsuarioVisual(u) !== filtroEstado) return false;
       if (
         q &&
         !`${u.nombre} ${u.apellido} ${u.email}`.toLowerCase().includes(q)
@@ -79,7 +98,15 @@ export default function UsuariosPage() {
       }
       return true;
     });
-  }, [usuarios, filtroRol, filtroEstado, busqueda]);
+    if (sort) {
+      result = [...result].sort((a, b) => {
+        const na = `${a.nombre} ${a.apellido}`.trim().toLowerCase();
+        const nb = `${b.nombre} ${b.apellido}`.trim().toLowerCase();
+        return sort === 'az' ? na.localeCompare(nb) : nb.localeCompare(na);
+      });
+    }
+    return result;
+  }, [usuarios, filtroRol, filtroEstado, busqueda, sort]);
 
   async function cambiarEstado(u: AdminUsuario, estado: EstadoUsuario) {
     if (estado === u.estado) return;
@@ -111,44 +138,63 @@ export default function UsuariosPage() {
     return `${u.nombre?.[0] ?? ''}${u.apellido?.[0] ?? ''}`.toUpperCase();
   }
 
+  function generarReporte() {
+    exportToCsv(
+      `usuarios-${new Date().toISOString().slice(0, 10)}`,
+      [
+        { key: 'nombre', label: 'Nombre' },
+        { key: 'apellido', label: 'Apellido' },
+        { key: 'email', label: 'Correo' },
+        { key: 'rol', label: 'Rol' },
+        { key: 'estado', label: 'Estado' },
+        { key: 'registro', label: 'Fecha de registro' },
+        { key: 'actividad', label: 'Última actividad' },
+      ],
+      filtrados.map((u) => ({
+        nombre: u.nombre,
+        apellido: u.apellido,
+        email: u.email,
+        rol: u.rol,
+        estado: estadoUsuarioVisual(u),
+        registro: formatDate(u.createdAt),
+        actividad: formatUltimoAcceso(u.ultimoAcceso),
+      })),
+    );
+  }
+
   const tarjetas = [
-    {
-      label: 'Usuarios totales',
-      valor: resumen.total,
-      icono: Users,
-      color: 'text-white',
-    },
-    {
-      label: 'Organizadores',
-      valor: resumen.organizadores,
-      icono: Briefcase,
-      color: 'text-[#45B46A]',
-    },
-    {
-      label: 'Suspendidos',
-      valor: resumen.suspendidos,
-      icono: ShieldOff,
-      color: 'text-[#B44561]',
-    },
+    { label: 'Activos', valor: resumen.activos, icono: ShieldCheck, color: 'text-[#45B46A]' },
+    { label: 'Organizadores', valor: resumen.organizadores, icono: Briefcase, color: 'text-[#4E8CFF]' },
+    { label: 'Admins', valor: resumen.admins, icono: Users, color: 'text-white' },
+    { label: 'Inactivos', valor: resumen.inactivos, icono: ShieldAlert, color: 'text-white/50' },
+    { label: 'Suspendidos', valor: resumen.suspendidos, icono: ShieldOff, color: 'text-[#B44561]' },
+    { label: 'Eliminados', valor: resumen.eliminados, icono: Trash2Icon, color: 'text-white/40' },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-clash text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-white">
             Gestión de usuarios
           </h1>
           <p className="mt-1 text-sm text-white/50">
-            Revisa, aprueba y administra las cuentas del sistema.
+            {resumen.total} usuario{resumen.total === 1 ? '' : 's'} registrado
+            {resumen.total === 1 ? '' : 's'} en la plataforma.
           </p>
         </div>
-        <Link href="/usuarios/nuevo">
-          <Button className="gap-2">
-            <UserPlus className="h-4 w-4" />
-            Nuevo usuario
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="gap-2" onClick={generarReporte}>
+            <FileDown className="h-4 w-4" />
+            Generar reporte
           </Button>
-        </Link>
+          <Link href="/usuarios/nuevo">
+            <Button className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Nuevo usuario
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -163,17 +209,17 @@ export default function UsuariosPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-6">
         {tarjetas.map((t) => (
           <div
             key={t.label}
-            className="rounded-lg border border-white/10 bg-black/40 p-5"
+            className="rounded-lg border border-white/10 bg-black/40 p-4"
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm text-white/50">{t.label}</span>
-              <t.icono className={cn('h-5 w-5', t.color)} />
+              <span className="text-xs text-white/50">{t.label}</span>
+              <t.icono className={cn('h-4 w-4', t.color)} />
             </div>
-            <p className="mt-2 font-clash text-3xl font-semibold text-white">
+            <p className="mt-2 text-2xl font-semibold text-white">
               {t.valor}
             </p>
           </div>
@@ -198,12 +244,26 @@ export default function UsuariosPage() {
           <SelectField
             label="Estado"
             value={filtroEstado}
-            onChange={(v) => setFiltroEstado(v as EstadoUsuario | '')}
+            onChange={(v) => setFiltroEstado(v as FiltroEstadoUi)}
             options={[
               { value: '', label: 'Todos' },
-              { value: 'activo', label: 'Activos' },
-              { value: 'suspendido', label: 'Suspendidos' },
-              { value: 'inactivo', label: 'Inactivos' },
+              { value: 'activo', label: 'Activo' },
+              { value: 'suspendido', label: 'Suspendido' },
+              { value: 'inactivo', label: 'Inactivo' },
+              { value: 'eliminado', label: 'Eliminado' },
+            ]}
+          />
+        </div>
+        <div className="w-40">
+          <SelectField
+            label="Ordenar"
+            value={sort}
+            onChange={(v) => setSort(v as Sort)}
+            placeholder="Sin orden"
+            options={[
+              { value: '', label: 'Sin orden' },
+              { value: 'az', label: 'Nombre A-Z' },
+              { value: 'za', label: 'Nombre Z-A' },
             ]}
           />
         </div>
@@ -217,24 +277,24 @@ export default function UsuariosPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-white/10">
-        <table className="w-full text-sm text-white">
+      <div className="overflow-x-auto rounded-lg border border-white/10">
+        <table className="w-full min-w-[820px] text-sm text-white">
           <thead className="border-b border-white/10 bg-white/5">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
                 Usuario
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
-                Email
+                Rol
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
                 Registro
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
-                Rol
+                Estado
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-white/50">
-                Estado
+                Actividad
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium text-white/50">
                 Acciones
@@ -255,82 +315,97 @@ export default function UsuariosPage() {
                 </td>
               </tr>
             ) : (
-              filtrados.map((u) => (
-                <tr
-                  key={u.id}
-                  className="border-b border-white/5 last:border-0 hover:bg-white/5"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      {u.fotoPerfilUrl ? (
-                        <img
-                          src={u.fotoPerfilUrl}
-                          alt=""
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white/70">
-                          {iniciales(u)}
-                        </div>
-                      )}
-                      <span className="font-medium">{`${u.nombre} ${u.apellido}`.trim()}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-white/70">{u.email}</td>
-                  <td className="px-4 py-3 text-white/50">{formatDate(u.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <EstadoBadge value={u.rol} />
-                  </td>
-                  <td className="px-4 py-3">
-                    {estadoLoadingId === u.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-white/40" />
-                    ) : (
-                      <select
-                        value={u.estado}
-                        onChange={(e) =>
-                          cambiarEstado(u, e.target.value as EstadoUsuario)
-                        }
-                        className={cn(
-                          'cursor-pointer rounded-md border border-white/10 bg-transparent px-2 py-1 text-xs',
-                          u.estado === 'activo'
-                            ? 'text-[#45B46A]'
-                            : u.estado === 'suspendido'
-                              ? 'text-[#B44561]'
-                              : 'text-white/50',
-                        )}
-                      >
-                        <option value="activo" className="bg-black text-white">
-                          Activo
-                        </option>
-                        <option value="suspendido" className="bg-black text-white">
-                          Suspendido
-                        </option>
-                        <option value="inactivo" className="bg-black text-white">
-                          Inactivo
-                        </option>
-                      </select>
+              filtrados.map((u) => {
+                const eliminado = Boolean(u.deletedAt);
+                return (
+                  <tr
+                    key={u.id}
+                    className={cn(
+                      'border-b border-white/5 last:border-0 hover:bg-white/5',
+                      eliminado && 'opacity-60',
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        title="Editar"
-                        href={`/usuarios/editar/${u.id}`}
-                        className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                      <button
-                        title="Eliminar"
-                        className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-[#B44561]"
-                        onClick={() => setEliminarUsuario(u)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {u.fotoPerfilUrl ? (
+                          <img
+                            src={u.fotoPerfilUrl}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white/70">
+                            {iniciales(u)}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{`${u.nombre} ${u.apellido}`.trim()}</p>
+                          <p className="truncate text-xs text-white/50">{u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <EstadoBadge value={u.rol} />
+                    </td>
+                    <td className="px-4 py-3 text-white/50">{formatDate(u.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      {eliminado ? (
+                        <EstadoBadge value="eliminado" />
+                      ) : estadoLoadingId === u.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-white/40" />
+                      ) : (
+                        <select
+                          value={u.estado}
+                          onChange={(e) =>
+                            cambiarEstado(u, e.target.value as EstadoUsuario)
+                          }
+                          className={cn(
+                            'cursor-pointer rounded-md border border-white/10 bg-transparent px-2 py-1 text-xs',
+                            u.estado === 'activo'
+                              ? 'text-[#45B46A]'
+                              : u.estado === 'suspendido'
+                                ? 'text-[#B44561]'
+                                : 'text-white/50',
+                          )}
+                        >
+                          <option value="activo" className="bg-black text-white">
+                            Activo
+                          </option>
+                          <option value="suspendido" className="bg-black text-white">
+                            Suspendido
+                          </option>
+                          <option value="inactivo" className="bg-black text-white">
+                            Inactivo
+                          </option>
+                        </select>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-white/50">
+                      {formatUltimoAcceso(u.ultimoAcceso)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          title="Editar perfil"
+                          href={`/usuarios/editar/${u.id}`}
+                          className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-white"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                        {!eliminado && (
+                          <button
+                            title="Eliminar"
+                            className="rounded p-1.5 text-white/60 hover:bg-white/10 hover:text-[#B44561]"
+                            onClick={() => setEliminarUsuario(u)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -341,7 +416,7 @@ export default function UsuariosPage() {
         title="Eliminar usuario"
         description={
           eliminarUsuario
-            ? `¿Deseas eliminar la cuenta de ${eliminarUsuario.nombre} ${eliminarUsuario.apellido}?`
+            ? `¿Deseas eliminar la cuenta de ${eliminarUsuario.nombre} ${eliminarUsuario.apellido}? El usuario dejará de aparecer en la plataforma, pero su información se conserva.`
             : ''
         }
         confirmLabel="Eliminar"

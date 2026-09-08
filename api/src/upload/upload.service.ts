@@ -57,12 +57,12 @@ export class UploadService {
     }
 
     return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
+      cloudinary.uploader.upload(
+        `data:image/jpeg;base64,${fileBuffer.toString('base64')}`,
         {
           folder,
           resource_type: 'image',
-          format: 'webp',
-          transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+          upload_preset: 'hlv_unsigned',
         },
         (error, result) => {
           if (error || !result) {
@@ -79,7 +79,6 @@ export class UploadService {
           });
         },
       );
-      uploadStream.end(fileBuffer);
     });
   }
 

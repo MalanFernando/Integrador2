@@ -4,7 +4,7 @@ interface AvatarProps {
   src?: string | null;
   alt?: string;
   fallback: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'profile' | 'member';
   className?: string;
 }
 
@@ -13,13 +13,15 @@ const sizeMap = {
   md: 'h-10 w-10 text-sm',
   lg: 'h-14 w-14 text-base',
   xl: 'h-20 w-20 text-lg',
+  profile: 'h-[110px] w-[110px] text-[2rem]',
+  member: 'h-[52px] w-[52px] text-sm',
 };
 
 function Avatar({ src, alt, fallback, size = 'md', className }: AvatarProps) {
   return (
     <div
       className={cn(
-        'relative inline-flex items-center justify-center rounded-full bg-slate-200 font-medium text-slate-600 overflow-hidden',
+        'relative inline-flex items-center justify-center rounded-full bg-slate-200 font-medium text-slate-600 overflow-hidden shrink-0',
         sizeMap[size],
         className,
       )}

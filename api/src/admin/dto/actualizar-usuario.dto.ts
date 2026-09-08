@@ -1,8 +1,10 @@
 import {
   IsEmail,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
   MinLength,
@@ -67,4 +69,40 @@ export class ActualizarUsuarioDto {
   @IsOptional()
   @IsIn([...ESTADO_USUARIO_ENUM])
   estado?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+    message: 'El slug solo puede contener letras minúsculas, números y guiones',
+  })
+  slug?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2000)
+  fotoPerfilUrl?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2000)
+  fotoPortada?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  biografia?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  etiqueta?: string;
+
+  @IsOptional()
+  @IsObject()
+  redesSociales?: Record<string, string>;
+
+  @IsOptional()
+  @IsObject()
+  ubicacion?: Record<string, unknown>;
 }

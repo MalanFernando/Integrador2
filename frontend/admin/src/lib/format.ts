@@ -41,3 +41,17 @@ const currencyFormatter = new Intl.NumberFormat('es-EC', {
 export function formatCurrency(value: number): string {
   return currencyFormatter.format(value || 0);
 }
+
+export function estadoUsuarioVisual(u: {
+  estado: string;
+  deletedAt?: string | null;
+}): string {
+  return u.deletedAt ? 'eliminado' : u.estado;
+}
+
+export function formatUltimoAcceso(
+  value: string | Date | null | undefined,
+): string {
+  if (!value) return 'Sin registro';
+  return formatDateTime(value);
+}

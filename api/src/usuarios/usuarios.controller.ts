@@ -4,6 +4,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
@@ -53,5 +54,11 @@ export class UsuariosController {
     @Body('perfilActivo') perfilActivo: string,
   ) {
     return this.usuariosService.cambiarPerfil(user.id, perfilActivo);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('habilitar-organizador')
+  habilitarOrganizador(@CurrentUser() user: { id: string }) {
+    return this.usuariosService.habilitarOrganizador(user.id);
   }
 }

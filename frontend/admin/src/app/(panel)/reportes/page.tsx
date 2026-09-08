@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/format';
+import { exportToPrintView } from '@/lib/export';
 import { EstadoBadge } from '@/components/ui/estado-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ import {
   BarChart3,
   FileDown,
   Loader2,
+  Printer,
   RefreshCw,
   Flag,
   CheckCircle2,
@@ -167,6 +169,57 @@ export default function ReportesPage() {
     URL.revokeObjectURL(url);
   }
 
+  function imprimir() {
+    if (!reporte) return;
+    exportToPrintView(
+      'Reporte del sistema — Hasta la Vuelta',
+      [
+        {
+          heading: 'Resumen',
+          columns: [
+            { key: 'metrica', label: 'Métrica' },
+            { key: 'valor', label: 'Valor' },
+          ],
+          rows: [
+            { metrica: 'Usuarios', valor: reporte.resumen.usuarios },
+            { metrica: 'Eventos', valor: reporte.resumen.eventos },
+            { metrica: 'Reservas', valor: reporte.resumen.reservas },
+            { metrica: 'Reseñas', valor: reporte.resumen.resenas },
+            { metrica: 'Organizadores', valor: reporte.resumen.organizadores },
+            { metrica: 'Categorías', valor: reporte.resumen.categorias },
+            { metrica: 'Eventos pendientes', valor: reporte.resumen.eventosPendientes },
+            { metrica: 'Reportes pendientes', valor: reporte.resumen.reportesPendientes },
+          ],
+        },
+        {
+          heading: 'Eventos por categoría',
+          columns: [
+            { key: 'categoria', label: 'Categoría' },
+            { key: 'total', label: 'Total' },
+          ],
+          rows: reporte.eventosPorCategoria.map((c) => ({
+            categoria: c.categoria,
+            total: c.total,
+          })),
+        },
+        {
+          heading: 'Top eventos con más reservas',
+          columns: [
+            { key: 'titulo', label: 'Evento' },
+            { key: 'totalReservas', label: 'Reservas' },
+          ],
+          rows: reporte.topEventos.map((e) => ({
+            titulo: e.titulo,
+            totalReservas: e.totalReservas,
+          })),
+        },
+      ],
+      `Generado ${formatDateTime(reporte.generadoEn)} · Período ${formatDateTime(
+        reporte.periodo.inicio,
+      )} a ${formatDateTime(reporte.periodo.fin)}`,
+    );
+  }
+
   function barra(label: string, valor: number, max: number, color?: string) {
     const pct = max > 0 ? Math.round((valor / max) * 100) : 0;
     return (
@@ -188,7 +241,7 @@ export default function ReportesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-clash text-2xl font-semibold text-white">
+        <h1 className="text-2xl font-semibold text-white">
           Reportes
         </h1>
         <p className="mt-1 text-sm text-white/50">
@@ -280,6 +333,15 @@ export default function ReportesPage() {
               <FileDown className="h-4 w-4" />
               Descargar
             </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={imprimir}
+              disabled={!reporte}
+            >
+              <Printer className="h-4 w-4" />
+              Vista de impresión
+            </Button>
           </div>
 
           {loading ? (
@@ -304,7 +366,7 @@ export default function ReportesPage() {
                     className="rounded-lg border border-white/10 bg-black/40 p-4"
                   >
                     <span className="text-sm text-white/50">{c.label}</span>
-                    <p className="mt-1 font-clash text-2xl font-semibold text-white">
+                    <p className="mt-1 text-2xl font-semibold text-white">
                       {c.valor}
                     </p>
                   </div>
@@ -468,7 +530,7 @@ export default function ReportesPage() {
                     className="rounded-lg border border-white/10 bg-black/40 p-4"
                   >
                     <span className="text-sm text-white/50">{c.label}</span>
-                    <p className="mt-1 font-clash text-2xl font-semibold text-[#45B46A]">
+                    <p className="mt-1 text-2xl font-semibold text-[#45B46A]">
                       {c.valor}
                     </p>
                   </div>
@@ -480,8 +542,8 @@ export default function ReportesPage() {
       )}
 
       {tab === 'reportes-eventos' && (
-        <div className="overflow-hidden rounded-lg border border-white/10">
-          <table className="w-full text-sm text-white">
+        <div className="overflow-x-auto rounded-lg border border-white/10">
+          <table className="w-full min-w-[720px] text-sm text-white">
             <thead className="border-b border-white/10 bg-white/5">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-white/50">

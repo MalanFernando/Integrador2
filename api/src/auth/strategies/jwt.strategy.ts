@@ -8,6 +8,8 @@ export interface JwtPayload {
   sub: string;
   email: string;
   rol: string;
+  perfilActivo?: string;
+  slug?: string | null;
 }
 
 @Injectable()
@@ -35,6 +37,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (usuario.estado === 'suspendido') {
       throw new UnauthorizedException('Cuenta suspendida');
     }
-    return { id: usuario.id, email: usuario.email, rol: usuario.rol };
+    return {
+      id: usuario.id,
+      email: usuario.email,
+      rol: usuario.rol,
+      perfilActivo:
+        (usuario as unknown as Record<string, unknown>).perfilActivo ||
+        'usuario',
+      slug: usuario.slug || null,
+    };
   }
 }

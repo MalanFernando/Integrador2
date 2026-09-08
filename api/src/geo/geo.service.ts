@@ -25,6 +25,25 @@ export interface RutaResultado {
   modo: string;
 }
 
+export interface RutaPaso {
+  accion: string;
+  calle: string;
+  distanciaM: number;
+  duracionS: number;
+}
+
+export interface RutaDetallada {
+  id: string;
+  modo: 'caminando' | 'vehiculo';
+  distanciaKm: number;
+  duracionMin: number;
+  geometria: unknown;
+  via: string;
+  titulo: string;
+  etiqueta: string;
+  pasos: RutaPaso[];
+}
+
 export interface CompartirLinks {
   googleMaps: string;
   waze: string;
@@ -97,7 +116,7 @@ export class GeoService {
 
   async calcularRuta(params: RutaParams): Promise<RutaResultado> {
     const osrmModo = params.modo === 'caminando' ? 'foot' : 'driving';
-    const url = `https://router.project-osrm.org/route/v1/${osrmModo}/${params.origenLng},${params.origenLat};${params.destinoLng},${params.destinoLat}?overview=full&geometries=geojson`;
+    const url = `https://router.project-osrm.org/route/v1/${osrmModo}/${params.origenLng},${params.origenLat};${params.destinoLng},${params.destinoLat}?overview=full&geometries=geojson&steps=false&alternatives=false`;
 
     let data: Record<string, unknown>;
     try {
@@ -129,14 +148,134 @@ export class GeoService {
     };
   }
 
+  async calcularRutasConPasos(params: RutaParams): Promise<RutaDetallada[]> {
+    const osrmModo = params.modo === 'caminando' ? 'foot' : 'driving';
+    const url = `https://router.project-osrm.org/route/v1/${osrmModo}/${params.origenLng},${params.origenLat};${params.destinoLng},${params.destinoLat}?overview=full&geometries=geojson&steps=true&alternatives=true`;
+
+    let data: Record<string, unknown>;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      data = (await response.json()) as Record<string, unknown>;
+    } catch {
+      throw new BadRequestException('No se pudo calcular la ruta');
+    }
+
+    if (data.code !== 'Ok') {
+      throw new BadRequestException('No se encontró una ruta válida');
+    }
+
+    const osrmRoutes = data.routes as Array<{
+      distance: number;
+      duration: number;
+      geometry: unknown;
+      legs: Array<{
+        steps: Array<{
+          maneuver: { type: string; modifier?: string };
+          name: string;
+          distance: number;
+          duration: number;
+        }>;
+      }>;
+    }>;
+
+    const resultados: RutaDetallada[] = [];
+
+    for (let idx = 0; idx < osrmRoutes.length; idx++) {
+      const route = osrmRoutes[idx];
+      const leg = route.legs?.[0];
+      const steps = leg?.steps;
+
+      if (!steps || !Array.isArray(steps)) {
+        continue;
+      }
+
+      let rawGeom = route.geometry as {
+        type?: string;
+        coordinates?: number[][];
+      };
+      if (!rawGeom?.coordinates || !Array.isArray(rawGeom.coordinates)) {
+        rawGeom = { type: 'LineString', coordinates: [] as number[][] };
+      }
+
+      const pasos: RutaPaso[] = steps.map((step) => ({
+        accion: `${step.maneuver?.type ?? 'unknown'}${step.maneuver?.modifier ? `-${step.maneuver.modifier}` : ''}`,
+        calle: step.name ?? '',
+        distanciaM: Math.round(step.distance ?? 0),
+        duracionS: Math.round(step.duration ?? 0),
+      }));
+
+      const streetsWithName = steps.filter(
+        (s) => s.name && s.name.trim() !== '',
+      );
+      const c1 = streetsWithName[0]?.name ?? '';
+      const c2 =
+        streetsWithName.length > 1 ? (streetsWithName[1]?.name ?? '') : '';
+
+      const titulo = c2 ? `Desde ${c1} y ${c2}` : `Desde ${c1}`;
+
+      let via = '';
+      let maxDist = 0;
+      for (const step of steps) {
+        if (step.name && (step.distance ?? 0) > maxDist) {
+          maxDist = step.distance ?? 0;
+          via = step.name;
+        }
+      }
+
+      resultados.push({
+        id: `${params.modo}-${idx}`,
+        modo: params.modo,
+        distanciaKm: Math.round((route.distance / 1000) * 100) / 100,
+        duracionMin: Math.round(route.duration / 60),
+        geometria: { type: 'LineString', coordinates: rawGeom.coordinates },
+        via,
+        titulo,
+        etiqueta: '',
+        pasos,
+      });
+    }
+
+    resultados.sort((a, b) => a.duracionMin - b.duracionMin);
+
+    const etiquetaMap: Record<number, string> = {};
+    if (resultados.length === 1) {
+      etiquetaMap[0] = 'La ruta más rápida ahora';
+    } else {
+      etiquetaMap[0] = 'La ruta más rápida ahora';
+      etiquetaMap[resultados.length - 1] = 'La ruta más larga';
+      for (let i = 1; i < resultados.length - 1; i++) {
+        etiquetaMap[i] = 'Alternativa';
+      }
+    }
+
+    for (let i = 0; i < resultados.length; i++) {
+      resultados[i].etiqueta = etiquetaMap[i];
+    }
+
+    return resultados;
+  }
+
   generarLinksCompartir(
     lat: number,
     lng: number,
     nombre?: string,
+    origenLat?: number,
+    origenLng?: number,
+    travelmode?: 'driving' | 'walking',
   ): CompartirLinks {
     const label = encodeURIComponent(nombre ?? 'Ubicación');
+    const googleMapsSearch = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+    let googleMapsDirections = '';
+    if (origenLat !== undefined && origenLng !== undefined && travelmode) {
+      googleMapsDirections = `https://www.google.com/maps/dir/?api=1&origin=${origenLat},${origenLng}&destination=${lat},${lng}&travelmode=${travelmode}`;
+    }
+
     return {
-      googleMaps: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      googleMaps: googleMapsDirections || googleMapsSearch,
       waze: `https://www.waze.com/ul?ll=${lat},${lng}&navigate=yes`,
       appleMaps: `https://maps.apple.com/?ll=${lat},${lng}&q=${label}`,
     };

@@ -34,7 +34,12 @@ export function LoginForm() {
       await login(values.email.toLowerCase(), values.password);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
+      const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      if (message.includes('verifica tu correo') || message.includes('pendiente') || message.includes('verificar')) {
+        router.push(`/verificar-correo?email=${encodeURIComponent(values.email.toLowerCase())}`);
+      } else {
+        setError(message);
+      }
     }
   };
 

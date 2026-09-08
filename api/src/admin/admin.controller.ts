@@ -27,6 +27,7 @@ import { GestionarReporteDto } from '../reportes/dto/gestionar-reporte.dto.js';
 import { GestionarReporteReservaDto } from '../reportes-reservas/dto/gestionar-reporte-reserva.dto.js';
 import { FiltroFechaDto } from './dto/filtro-fecha.dto.js';
 import { VerificarReservaDto } from './dto/verificar-reserva.dto.js';
+import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.js';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin')
@@ -107,8 +108,27 @@ export class AdminController {
   }
 
   @Get('usuarios')
-  listUsuarios() {
-    return this.adminService.listUsuarios();
+  listUsuarios(
+    @Query('incluirEliminados') incluirEliminados?: string,
+    @Query('buscar') buscar?: string,
+    @Query('rol') rol?: string,
+    @Query('estado') estado?: string,
+    @Query('orden') orden?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.adminService.listUsuarios({
+      incluirEliminados: incluirEliminados === 'true',
+      buscar,
+      rol,
+      estado,
+      orden,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('usuarios/estadisticas')
+  estadisticasUsuarios() {
+    return this.adminService.estadisticasUsuarios();
   }
 
   @Get('usuarios/:id')
@@ -154,9 +174,29 @@ export class AdminController {
     return this.adminService.setEstadoUsuario(id, dto, this.ctx(user, ip));
   }
 
+  @Get('organizadores-resumen')
+  listOrganizadoresResumen() {
+    return this.adminService.listOrganizadoresResumen();
+  }
+
   @Get('eventos')
-  listEventos(@Query('estado') estado?: string) {
-    return this.adminService.listEventos(estado);
+  listEventos(
+    @Query('estado') estado?: string,
+    @Query('categoriaId') categoriaId?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
+  ) {
+    return this.adminService.listEventos({
+      estado,
+      categoriaId,
+      fechaDesde,
+      fechaHasta,
+    });
+  }
+
+  @Get('eventos/estadisticas')
+  estadisticasEventos() {
+    return this.adminService.estadisticasEventos();
   }
 
   @Get('eventos/:id')
@@ -212,8 +252,36 @@ export class AdminController {
   }
 
   @Get('resenas')
-  listResenas(@Query('estado') estado?: string) {
-    return this.adminService.listResenas(estado);
+  listResenas(
+    @Query('estado') estado?: string,
+    @Query('buscar') buscar?: string,
+    @Query('puntuacion') puntuacion?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
+    @Query('incluirEliminadas') incluirEliminadas?: string,
+  ) {
+    return this.adminService.listResenas({
+      estado,
+      buscar,
+      puntuacion,
+      fechaDesde,
+      fechaHasta,
+      incluirEliminadas: incluirEliminadas === 'true',
+    });
+  }
+
+  @Get('resenas/estadisticas')
+  estadisticasResenas() {
+    return this.adminService.estadisticasResenas();
+  }
+
+  @Delete('resenas/:id')
+  eliminarResena(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.eliminarResena(id, this.ctx(user, ip));
   }
 
   @Put('resenas/:id/estado')
@@ -232,8 +300,53 @@ export class AdminController {
   }
 
   @Get('reservas')
-  listReservas(@Query('estado') estado?: string) {
-    return this.adminService.listReservas(estado);
+  listReservas(
+    @Query('estado') estado?: string,
+    @Query('eventoId') eventoId?: string,
+    @Query('buscar') buscar?: string,
+    @Query('localidad') localidad?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
+    @Query('incluirEliminadas') incluirEliminadas?: string,
+  ) {
+    return this.adminService.listReservas({
+      estado,
+      eventoId,
+      buscar,
+      localidad,
+      fechaDesde,
+      fechaHasta,
+      incluirEliminadas: incluirEliminadas === 'true',
+    });
+  }
+
+  @Get('reservas/estadisticas')
+  estadisticasReservas() {
+    return this.adminService.estadisticasReservas();
+  }
+
+  @Delete('reservas/:id')
+  eliminarReserva(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.eliminarReserva(id, this.ctx(user, ip));
+  }
+
+  @Get('eventos-con-reservas')
+  eventosConReservasResumen(
+    @Query('buscar') buscar?: string,
+    @Query('estado') estado?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
+  ) {
+    return this.adminService.eventosConReservasResumen({
+      buscar,
+      estado,
+      fechaDesde,
+      fechaHasta,
+    });
   }
 
   @Put('reservas/:id/verificar')
@@ -295,7 +408,42 @@ export class AdminController {
   }
 
   @Get('bitacora')
-  listBitacora(@Query('tablaAfectada') tablaAfectada?: string) {
-    return this.adminService.listBitacora(tablaAfectada);
+  listBitacora(
+    @Query('tablaAfectada') tablaAfectada?: string,
+    @Query('buscar') buscar?: string,
+    @Query('rol') rol?: string,
+    @Query('estado') estado?: string,
+    @Query('accion') accion?: string,
+    @Query('fechaDesde') fechaDesde?: string,
+    @Query('fechaHasta') fechaHasta?: string,
+  ) {
+    return this.adminService.listBitacora({
+      tablaAfectada,
+      buscar,
+      rol,
+      estado,
+      accion,
+      fechaDesde,
+      fechaHasta,
+    });
+  }
+
+  @Get('bitacora/estadisticas')
+  estadisticasBitacora() {
+    return this.adminService.estadisticasBitacora();
+  }
+
+  @Get('configuracion')
+  getConfiguracion() {
+    return this.adminService.getConfiguracion();
+  }
+
+  @Put('configuracion')
+  actualizarConfiguracion(
+    @CurrentUser() user: { id: string; rol: string },
+    @Ip() ip: string,
+    @Body() dto: ActualizarConfiguracionDto,
+  ) {
+    return this.adminService.actualizarConfiguracion(dto, this.ctx(user, ip));
   }
 }

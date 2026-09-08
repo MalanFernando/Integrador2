@@ -4,11 +4,13 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { EventosService } from './eventos.service.js';
 import { ScrapingService } from '../scraping/scraping.service.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -17,6 +19,8 @@ import { Roles } from '../auth/roles.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { CreateEventoDto } from './dto/create-evento.dto.js';
 import { UpdateEventoDto } from './dto/update-evento.dto.js';
+import { UpdateVisibilidadDto } from './dto/update-visibilidad.dto.js';
+import { CancelEventoDto } from './dto/cancel-evento.dto.js';
 
 @Controller('eventos')
 export class EventosController {
@@ -26,16 +30,20 @@ export class EventosController {
   ) {}
 
   @Get()
+  @SkipThrottle()
   list(
     @Query('estado') estado?: string,
     @Query('categoriaId') categoriaId?: string,
     @Query('q') q?: string,
     @Query('fechaDesde') fechaDesde?: string,
     @Query('fechaHasta') fechaHasta?: string,
+    @Query('precioMin') precioMin?: string,
     @Query('precioMax') precioMax?: string,
+    @Query('gratis') gratis?: string,
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
     @Query('radioKm') radioKm?: string,
+    @Query('sort') sort?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -45,10 +53,13 @@ export class EventosController {
       q,
       fechaDesde,
       fechaHasta,
+      precioMin,
       precioMax,
+      gratis,
       lat,
       lng,
       radioKm,
+      sort,
       page,
       limit,
     });
@@ -99,11 +110,28 @@ export class EventosController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch(':id/visibilidad')
+  updateVisibilidad(
+    @CurrentUser() user: { id: string; rol: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateVisibilidadDto,
+  ) {
+    return this.eventosService.updateVisibilidad(
+      id,
+      dto.visibilidad,
+      user.id,
+      user.rol,
+      dto.motivo,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   cancel(
     @CurrentUser() user: { id: string; rol: string },
     @Param('id') id: string,
+    @Body() dto: CancelEventoDto,
   ) {
-    return this.eventosService.cancel(id, user.id, user.rol);
+    return this.eventosService.cancel(id, user.id, user.rol, dto.motivo);
   }
 }

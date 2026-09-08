@@ -6,102 +6,102 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { CrearEventoModal } from '@/components/eventos/crear-evento-modal';
-import { Menu, X, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Menu, X, Plus, ChevronDown, User, Pencil, LogOut, Bell } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface HostNavProps {
   slug: string;
-  isOwner: boolean;
 }
 
-export function HostNav({ slug, isOwner }: HostNavProps) {
+export function HostNav({ slug }: HostNavProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [crearOpen, setCrearOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
+    <>
     <nav className="sticky top-0 z-40 w-full border-b border-white/10 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <img
-            src="/Logotype.svg"
-            alt="Hasta la Vuelta"
-            className="h-9 w-auto"
-          />
+          <div className="flex items-center gap-2">
+            <img
+              src="/Logotype.svg"
+              alt="Hasta la Vuelta"
+              className="h-9 w-auto"
+            />
+          </div>
         </div>
 
         <div className="hidden md:flex items-center gap-6">
-          {isOwner && (
-            <>
-              <Link
-                href={`/host/${slug}/eventos`}
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-              >
-                Eventos
-              </Link>
-              <Link
-                href={`/host/${slug}/resenas`}
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-              >
-                Reseñas
-              </Link>
-              <Link
-                href={`/host/${slug}/miembros`}
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-              >
-                Miembros
-              </Link>
-              <Link
-                href={`/host/${slug}/tickets`}
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-              >
-                Tickets
-              </Link>
-              <Link
-                href={`/host/${slug}/configuracion`}
-                className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-              >
-                Configuración
-              </Link>
-            </>
-          )}
-          {user ? (
-            <div className="flex items-center gap-4">
-              {isOwner && (
-                <Button size="sm" className="gap-2" onClick={() => setCrearOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Crear evento
-                </Button>
-              )}
-              <Link href="/perfil" className="flex items-center gap-2">
-                <Avatar
-                  src={user.fotoPerfilUrl}
-                  fallback={user.nombre.charAt(0)}
-                  size="sm"
-                />
-                <span className="text-sm text-white/80">
-                  {user.nombre}
-                </span>
-              </Link>
-              {!isOwner && (
-                <Button variant="ghost" size="sm" onClick={logout}>
-                  Salir
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/login">
-                <Button variant="ghost" size="sm">
-                  Iniciar sesión
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button size="sm">Registrarse</Button>
-              </Link>
-            </div>
-          )}
+          <Button size="sm" className="gap-2" onClick={() => setCrearOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Crear evento
+          </Button>
+          <button className="relative p-2 text-white/70 hover:text-white transition-colors">
+            <Bell className="h-5 w-5" />
+          </button>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center gap-2 p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <Avatar
+                src={user?.fotoPerfilUrl}
+                fallback={user?.nombre?.charAt(0) ?? 'H'}
+                size="sm"
+              />
+              <ChevronDown className="h-4 w-4 text-white/60" />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-[#101010] border border-white/10 rounded-lg shadow-lg overflow-hidden">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      router.push(`/host/${user?.slug}`);
+                      setDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  >
+                    <User className="h-4 w-4" />
+                    Ver perfil
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push(`/host/${user?.slug}/configuracion/editar`);
+                      setDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Editar perfil
+                  </button>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setDropdownOpen(false);
+                    }}
+                    className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-400 hover:bg-white/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <button
@@ -116,104 +116,12 @@ export function HostNav({ slug, isOwner }: HostNavProps) {
         </button>
       </div>
 
-      {mobileOpen && (
-        <div className="md:hidden border-t border-white/10 bg-black px-4 py-4 space-y-3">
-          {isOwner && (
-            <>
-              <Link
-                href={`/host/${slug}/eventos`}
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Eventos
-              </Link>
-              <Link
-                href={`/host/${slug}/resenas`}
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Reseñas
-              </Link>
-              <Link
-                href={`/host/${slug}/miembros`}
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Miembros
-              </Link>
-              <Link
-                href={`/host/${slug}/tickets`}
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Tickets
-              </Link>
-              <Link
-                href={`/host/${slug}/configuracion`}
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Configuración
-              </Link>
-            </>
-          )}
-          {user ? (
-            <>
-              {isOwner && (
-                <Link
-                  href={`/host/${slug}/eventos/nuevo`}
-                  className="block text-sm font-medium text-white"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Crear evento
-                </Link>
-              )}
-              <Link
-                href="/"
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Cambiar a usuario
-              </Link>
-              <button
-                onClick={() => {
-                  logout();
-                  setMobileOpen(false);
-                }}
-                className="text-sm font-medium text-red-400"
-              >
-                Cerrar sesión
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="block text-sm font-medium text-white/70"
-                onClick={() => setMobileOpen(false)}
-              >
-                Iniciar sesión
-              </Link>
-              <Link
-                href="/register"
-                className="block text-sm font-medium text-white"
-                onClick={() => setMobileOpen(false)}
-              >
-                Registrarse
-              </Link>
-            </>
-          )}
-        </div>
-      )}
-
       <CrearEventoModal
         open={crearOpen}
         onClose={() => setCrearOpen(false)}
         onSelectUrl={(url) =>
           router.push(
-            `/host/${slug}/eventos/nuevo?modo=url&url=${encodeURIComponent(
-              url,
-            )}`,
+            `/host/${slug}/eventos/nuevo?modo=url&url=${encodeURIComponent(url)}`,
           )
         }
         onSelectFormulario={() =>
@@ -221,5 +129,33 @@ export function HostNav({ slug, isOwner }: HostNavProps) {
         }
       />
     </nav>
+
+    {mobileOpen && (
+      <div
+        className="fixed inset-x-0 top-[72px] bottom-0 z-50 bg-black/95 backdrop-blur-sm overflow-y-auto md:hidden"
+        onClick={() => setMobileOpen(false)}
+      >
+        <div className="px-4 py-4 space-y-3">
+          <Link
+            href={`/host/${slug}/eventos/nuevo`}
+            className="block text-sm font-medium text-white"
+            onClick={() => setMobileOpen(false)}
+          >
+            Crear evento
+          </Link>
+          <button
+            onClick={() => {
+              logout();
+              router.push('/');
+              setMobileOpen(false);
+            }}
+            className="text-sm font-medium text-red-400"
+          >
+            Cerrar sesión
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

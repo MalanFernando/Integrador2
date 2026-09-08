@@ -5,6 +5,7 @@ export const ESTADO_USUARIO_ENUM = [
   'activo',
   'suspendido',
   'inactivo',
+  'pendiente',
 ] as const;
 export type EstadoUsuario = (typeof ESTADO_USUARIO_ENUM)[number];
 

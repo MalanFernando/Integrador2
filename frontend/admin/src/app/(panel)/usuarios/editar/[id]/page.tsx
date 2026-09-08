@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { Button } from '@/components/ui/button';
 import { UsuarioForm } from '@/components/usuarios/usuario-form';
+import { exportToPrintView } from '@/lib/export';
+import { formatDate, formatUltimoAcceso } from '@/lib/format';
 import type { AdminUsuario } from '@/types';
+import { FileDown } from 'lucide-react';
 
 export default function EditarUsuarioPage() {
   const params = useParams<{ id: string }>();
@@ -47,6 +51,33 @@ export default function EditarUsuarioPage() {
     );
   }
 
+  function generarReportePerfil() {
+    if (!usuario) return;
+    exportToPrintView(
+      `Perfil de ${usuario.nombre} ${usuario.apellido}`,
+      [
+        {
+          heading: 'Datos generales',
+          columns: [
+            { key: 'campo', label: 'Campo' },
+            { key: 'valor', label: 'Valor' },
+          ],
+          rows: [
+            { campo: 'Nombre', valor: `${usuario.nombre} ${usuario.apellido}`.trim() },
+            { campo: 'Correo', valor: usuario.email },
+            { campo: 'Teléfono', valor: usuario.telefono ?? '—' },
+            { campo: 'Rol', valor: usuario.rol },
+            { campo: 'Estado', valor: usuario.estado },
+            { campo: 'Fecha de registro', valor: formatDate(usuario.createdAt) },
+            { campo: 'Última actividad', valor: formatUltimoAcceso(usuario.ultimoAcceso) },
+            { campo: 'Slug público', valor: usuario.slug ?? '—' },
+          ],
+        },
+      ],
+      `Generado el ${formatDate(new Date().toISOString())}`,
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Breadcrumb
@@ -55,15 +86,23 @@ export default function EditarUsuarioPage() {
           { label: `Editar ${usuario?.nombre ?? ''}` },
         ]}
       />
-      <div>
-        <h1 className="font-clash text-2xl font-semibold text-white">
-          Editar usuario
-        </h1>
-        <p className="mt-1 text-sm text-white/50">
-          Actualiza los datos de la cuenta.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">
+            Editar usuario
+          </h1>
+          <p className="mt-1 text-sm text-white/50">
+            Actualiza los datos de la cuenta.
+          </p>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={generarReportePerfil}>
+          <FileDown className="h-4 w-4" />
+          Generar reporte de este usuario
+        </Button>
       </div>
-      <UsuarioForm mode="editar" usuario={usuario} />
+      <Suspense fallback={null}>
+        <UsuarioForm mode="editar" usuario={usuario} />
+      </Suspense>
     </div>
   );
 }

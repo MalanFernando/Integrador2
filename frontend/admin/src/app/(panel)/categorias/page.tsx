@@ -112,7 +112,7 @@ export default function CategoriasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-clash text-2xl font-semibold text-white">
+          <h1 className="text-2xl font-semibold text-white">
             Categorías
           </h1>
           <p className="mt-1 text-sm text-white/50">

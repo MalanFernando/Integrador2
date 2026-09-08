@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/format';
 import { EstadoBadge } from '@/components/ui/estado-badge';
 import { SelectField } from '@/components/ui/select-field';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import type {
   DashboardAdmin,
   Reserva,
@@ -15,12 +17,15 @@ import type {
 import {
   Users,
   CalendarDays,
-  Ticket,
-  Star,
   AlertTriangle,
   Activity,
   Loader2,
   ArrowRight,
+  Briefcase,
+  Shapes,
+  MapPin,
+  FileDown,
+  Clock,
 } from 'lucide-react';
 
 const FILTROS = [
@@ -30,16 +35,35 @@ const FILTROS = [
   { value: 'mes', label: 'Este mes' },
 ];
 
+function useRelojLocal() {
+  const [ahora, setAhora] = useState<Date | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- solo se ejecuta en cliente para evitar mismatch de hidratación con la hora del servidor
+    setAhora(new Date());
+    const id = setInterval(() => setAhora(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  return ahora;
+}
+
 export default function DashboardPage() {
   const [filtro, setFiltro] = useState('');
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
   const [dashboard, setDashboard] = useState<DashboardAdmin | null>(null);
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const ahora = useRelojLocal();
 
   const cargar = () => {
     const params = new URLSearchParams();
-    if (filtro) params.set('filtro', filtro);
+    if (fechaDesde || fechaHasta) {
+      if (fechaDesde) params.set('fechaDesde', fechaDesde);
+      if (fechaHasta) params.set('fechaHasta', fechaHasta);
+    } else if (filtro) {
+      params.set('filtro', filtro);
+    }
     Promise.all([
       api.get<DashboardAdmin>(`/admin/dashboard?${params.toString()}`),
       api.get<PaginatedResult<Reserva>>('/admin/reservas?take=200'),
@@ -55,7 +79,7 @@ export default function DashboardPage() {
   useEffect(() => {
     cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro]);
+  }, [filtro, fechaDesde, fechaHasta]);
 
   const totalesLocalidad = useMemo(() => {
     const mapa = new Map<string, Map<string, number>>();
@@ -101,13 +125,21 @@ export default function DashboardPage() {
 
   const kpis = dashboard
     ? [
-        { label: 'Usuarios', valor: dashboard.resumen.usuarios, icono: Users },
         { label: 'Eventos', valor: dashboard.resumen.eventos, icono: CalendarDays },
-        { label: 'Reservas', valor: dashboard.resumen.reservas, icono: Ticket },
-        { label: 'Reseñas', valor: dashboard.resumen.resenas, icono: Star },
+        { label: 'Usuarios', valor: dashboard.resumen.usuarios, icono: Users },
         {
-          label: 'Reportes pendientes',
-          valor: dashboard.resumen.reportesPendientes,
+          label: 'Organizadores',
+          valor: dashboard.resumen.organizadores,
+          icono: Briefcase,
+        },
+        {
+          label: 'Categorías',
+          valor: dashboard.resumen.categorias,
+          icono: Shapes,
+        },
+        {
+          label: 'Pendientes / revisión',
+          valor: dashboard.resumen.eventosPendientes,
           icono: AlertTriangle,
         },
       ]
@@ -117,21 +149,62 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="font-clash text-2xl font-semibold text-white">
-            Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-white/50">
-            Resumen del estado actual de la plataforma.
+          <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/50">
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" />
+              Quito, Ecuador
+            </span>
+            {ahora && (
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5" />
+                {ahora.toLocaleDateString('es-EC', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}{' '}
+                ·{' '}
+                {ahora.toLocaleTimeString('es-EC', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            )}
           </p>
         </div>
-        <div className="w-52">
-          <SelectField
-            label="Período"
-            value={filtro}
-            onChange={(v) => setFiltro(v)}
-            placeholder="Selecciona..."
-            options={FILTROS}
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-44">
+            <SelectField
+              label="Período"
+              value={filtro}
+              onChange={(v) => {
+                setFiltro(v);
+                setFechaDesde('');
+                setFechaHasta('');
+              }}
+              placeholder="Selecciona..."
+              options={FILTROS}
+            />
+          </div>
+          <div className="w-44">
+            <Input
+              id="fecha-especifica"
+              label="Fecha específica"
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => {
+                setFechaDesde(e.target.value);
+                setFechaHasta(e.target.value);
+                if (e.target.value) setFiltro('');
+              }}
+            />
+          </div>
+          <Link href="/reportes">
+            <Button variant="outline" className="gap-2">
+              <FileDown className="h-4 w-4" />
+              Generar reporte
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -157,7 +230,7 @@ export default function DashboardPage() {
                   <span className="text-sm text-white/50">{k.label}</span>
                   <k.icono className="h-5 w-5 text-white/50" />
                 </div>
-                <p className="mt-2 font-clash text-3xl font-semibold text-white">
+                <p className="mt-2 text-3xl font-semibold text-white">
                   {k.valor}
                 </p>
               </div>

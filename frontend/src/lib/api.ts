@@ -6,6 +6,16 @@ interface ApiEnvelope<T> {
   message: string;
 }
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 class ApiClient {
   private token: string | null = null;
 
@@ -38,12 +48,15 @@ class ApiClient {
       ...options,
       headers: { ...headers, ...options?.headers },
     });
-    const json = (await res.json()) as ApiEnvelope<T>;
     if (!res.ok) {
-      throw new Error(
-        (json as { message?: string }).message || 'Error del servidor',
-      );
+      let message = 'Error del servidor';
+      try {
+        const json = (await res.json()) as ApiEnvelope<T>;
+        message = json.message || message;
+      } catch {}
+      throw new ApiError(message, res.status);
     }
+    const json = (await res.json()) as ApiEnvelope<T>;
     return json.data;
   }
 
@@ -65,8 +78,18 @@ class ApiClient {
     });
   }
 
-  delete<T>(path: string) {
-    return this.request<T>(path, { method: 'DELETE' });
+  delete<T>(path: string, body?: unknown) {
+    return this.request<T>(path, {
+      method: 'DELETE',
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+  }
+
+  patch<T>(path: string, body: unknown) {
+    return this.request<T>(path, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
   }
 
   async postFile<T>(path: string, file: File): Promise<T> {

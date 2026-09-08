@@ -103,17 +103,29 @@ export const resetPasswordSchema = z
     path: ['confirmPassword'],
   });
 
+const campoOpcional = z
+  .string()
+  .optional()
+  .or(z.literal(''))
+  .transform((v) => (v ? v : undefined));
+
 export const updatePerfilSchema = z.object({
   nombre: nombreSchema,
   apellido: apellidoBase.optional().or(z.literal('')).transform((v) => (v ? v : undefined)),
   telefono: telefonoOpcional,
   cedula: cedulaOpcional,
+  etiqueta: campoOpcional,
   biografia: z
     .string()
     .max(100, 'La biografía no puede superar los 100 caracteres')
     .optional()
     .or(z.literal(''))
     .transform((v) => (v ? v : undefined)),
+  web: campoOpcional,
+  facebook: campoOpcional,
+  instagram: campoOpcional,
+  tiktok: campoOpcional,
+  otraRed: campoOpcional,
 });
 
 const IMAGENES_PERMITIDAS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -130,11 +142,25 @@ export function validarImagenPerfil(file: File | null): string | null {
   return null;
 }
 
+export const verificarCodigoSchema = z.object({
+  email: emailSchema,
+  codigo: z
+    .string()
+    .length(6, 'El código debe tener exactamente 6 dígitos')
+    .regex(/^\d{6}$/, 'El código debe contener solo números'),
+});
+
+export const reenviarCodigoSchema = z.object({
+  email: emailSchema,
+});
+
 export type LoginValues = z.infer<typeof loginSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;
 export type UpdatePerfilValues = z.infer<typeof updatePerfilSchema>;
+export type VerificarCodigoValues = z.infer<typeof verificarCodigoSchema>;
+export type ReenviarCodigoValues = z.infer<typeof reenviarCodigoSchema>;
 
 export const telefonoObligatorio = z
   .string()
@@ -208,6 +234,11 @@ export const carteleraArtistaSchema = z.object({
     .string()
     .min(1, 'Ingresa el nombre del artista')
     .max(150, 'Máximo 150 caracteres'),
+  rol: z
+    .string()
+    .max(100, 'Máximo 100 caracteres')
+    .optional(),
+  orden: z.number().int().nonnegative().optional(),
   redSocial: urlOpcional.optional(),
 });
 

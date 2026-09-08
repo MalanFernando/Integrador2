@@ -32,7 +32,19 @@ interface SeguidoresModalProps {
   userId: string;
 }
 
-function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'open'>) {
+interface ModalContentProps {
+  type: 'seguidores' | 'siguiendo';
+  userId: string;
+  onClose: () => void;
+  open: boolean;
+}
+
+function ModalContent({
+  type,
+  userId,
+  onClose,
+  open,
+}: ModalContentProps) {
   const { user: currentUser } = useAuth();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SocialUser[] | null>(null);
@@ -41,6 +53,7 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    if (!open) return;
     let active = true;
 
     const params = new URLSearchParams({
@@ -70,7 +83,7 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
     return () => {
       active = false;
     };
-  }, [type, userId, page, search, refreshKey]);
+  }, [open, type, userId, page, search, refreshKey]);
 
   const loading = items === null;
 
@@ -86,7 +99,7 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
   return (
     <div className="space-y-4">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
         <Input
           placeholder="Buscar por nombre..."
           value={search}
@@ -102,17 +115,17 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
       <div className="max-h-96 overflow-y-auto space-y-2">
         {loading ? (
           <div className="flex justify-center py-8">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin rounded-sm border-2 border-white/20 border-t-white" />
           </div>
         ) : items.length === 0 ? (
-          <p className="text-center text-sm text-slate-500 py-8">
+          <p className="text-center text-sm text-white/50 py-8">
             {search ? 'No se encontraron resultados' : 'No hay usuarios'}
           </p>
         ) : (
           items.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between rounded-lg p-3 hover:bg-slate-50"
+              className="flex items-center justify-between rounded-sm p-3 hover:bg-white/10"
             >
               <Link
                 href={item.slug ? `/host/${item.slug}` : `/perfil/${item.id}`}
@@ -124,7 +137,7 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
                   fallback={item.nombre.charAt(0)}
                   size="sm"
                 />
-                <span className="text-sm font-medium text-slate-900 truncate">
+                  <span className="text-sm font-medium text-white truncate">
                   {item.nombre}
                 </span>
               </Link>
@@ -155,7 +168,7 @@ function ModalContent({ type, userId, onClose }: Omit<SeguidoresModalProps, 'ope
           >
             Anterior
           </Button>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-white/50">
             {page} / {totalPages}
           </span>
           <Button
@@ -182,8 +195,12 @@ export function SeguidoresModal({
   userId,
 }: SeguidoresModalProps) {
   return (
-    <Dialog open={open} onClose={onClose} title={type === 'seguidores' ? 'Seguidores' : 'Siguiendo'}>
-      <ModalContent key={type} type={type} userId={userId} onClose={onClose} />
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={type === 'seguidores' ? 'Seguidores' : 'Siguiendo'}
+    >
+      <ModalContent key={type} type={type} userId={userId} onClose={onClose} open={open} />
     </Dialog>
   );
 }

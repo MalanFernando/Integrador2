@@ -5,15 +5,19 @@ import {
   Post,
   Request,
   UseGuards,
+  Res,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
+import { type Response } from 'express';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { VerifyEmailDto } from './dto/verify-email.dto.js';
+import { ReSendCodeDto } from './dto/re-send-code.dto.js';
 import type { GoogleUser } from './strategies/google.strategy.js';
 
 @Controller('auth')
@@ -30,6 +34,18 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @SkipThrottle()
+  @Post('verify-email')
+  verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.email, dto.codigo);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('re-send-code')
+  reSendCode(@Body() dto: ReSendCodeDto) {
+    return this.authService.reSendCode(dto.email);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -56,11 +72,14 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleCallback(@Request() req: { user: GoogleUser }) {
+  async googleCallback(
+    @Request() req: { user: GoogleUser },
+    @Res() res: Response,
+  ) {
     const result = await this.authService.validateGoogleUser(req.user);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
     const token = encodeURIComponent(result.access_token);
     const user = encodeURIComponent(JSON.stringify(result.user));
-    return { url: `${frontendUrl}/auth/callback?token=${token}&user=${user}` };
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${user}`);
   }
 }

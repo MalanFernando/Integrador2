@@ -11,6 +11,7 @@ import { Favorito } from '../favoritos/entities/favorito.entity.js';
 import { ReporteEvento } from '../reportes/entities/reporte-evento.entity.js';
 import { ReporteReserva } from '../reportes-reservas/entities/reporte-reserva.entity.js';
 import { EventVisita } from '../eventos/estadisticas/event-visita.entity.js';
+import { ConfiguracionPlataforma } from './entities/configuracion-plataforma.entity.js';
 import { AdminService } from './admin.service.js';
 import { AdminController } from './admin.controller.js';
 import { EventosModule } from '../eventos/eventos.module.js';
@@ -35,6 +36,7 @@ import { ReportesReservasModule } from '../reportes-reservas/reportes-reservas.m
       ReporteEvento,
       ReporteReserva,
       EventVisita,
+      ConfiguracionPlataforma,
     ]),
     EventosModule,
     ReservasModule,

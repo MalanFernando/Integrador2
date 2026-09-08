@@ -1,5 +1,5 @@
 export type RolUsuario = 'admin' | 'organizador' | 'usuario';
-export type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo';
+export type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo' | 'pendiente';
 
 export interface User {
   id: string;
@@ -16,6 +16,7 @@ export interface User {
   ubicacion?: Record<string, unknown> | null;
   rol: RolUsuario;
   estado: EstadoUsuario;
+  perfilActivo?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,19 +67,23 @@ export interface EventItem {
   latitud: number | null;
   longitud: number | null;
   distanciaKm: number | null;
+  esGratuito: boolean | null;
+  precioMin: number | null;
+  organizadorNombre: string | null;
+  organizadorFotoPerfilUrl: string | null;
 }
 
 export interface Localidad {
   nombre: string;
-  aforo: number;
   precio: number;
+  aforo: number;
 }
 
 export interface CartelItem {
   usuarioId?: string;
   nombre: string;
-  rol: string;
-  orden: number;
+  rol?: string;
+  orden?: number;
   redSocial?: string | null;
 }
 
@@ -92,6 +97,8 @@ export interface Resena {
   eventoId: string;
   autorId: string;
   autor: Pick<User, 'id' | 'nombre' | 'apellido' | 'fotoPerfilUrl' | 'slug'>;
+  evento?: { id: string; titulo: string };
+  motivoReporte?: string | null;
   puntuacion: number;
   comentario: string | null;
   estado: string;
@@ -279,6 +286,8 @@ export interface CategoriaConUsos extends Category {
 export interface PublicProfile extends User {
   eventos: PublicEvento[];
   seguidores: number;
+  score: number | null;
+  saved: number;
 }
 
 export interface SocialListResponse {
@@ -287,4 +296,36 @@ export interface SocialListResponse {
   limit: number;
   totalPages: number;
   items: User[];
+}
+
+export interface MiembroOrganizacion {
+  id: string;
+  organizadorId: string;
+  usuarioId: string | null;
+  usuario: Pick<User, 'id' | 'nombre' | 'apellido' | 'fotoPerfilUrl'> | null;
+  emailInvitacion: string | null;
+  nombreInvitado: string | null;
+  rolOrganizacion: 'editor' | 'moderador';
+  estado: 'activo' | 'inactivo' | 'pendiente';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RutaPaso {
+  accion: string;
+  calle: string;
+  distanciaM: number;
+  duracionS: number;
+}
+
+export interface RutaDetallada {
+  id: string;
+  modo: 'caminando' | 'vehiculo';
+  distanciaKm: number;
+  duracionMin: number;
+  geometria: GeoJSON.LineString;
+  via: string;
+  titulo: string;
+  etiqueta: string;
+  pasos: RutaPaso[];
 }

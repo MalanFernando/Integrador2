@@ -6,10 +6,14 @@ import { Evento } from '../eventos/entities/evento.entity.js';
 import { Resena } from '../resenas/entities/resena.entity.js';
 import { OrganizacionesService } from './organizaciones.service.js';
 import { OrganizacionesController } from './organizaciones.controller.js';
+import { MailerModule } from '../auth/mailer.module.js';
+import { SocialModule } from '../social/social.module.js';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([MiembroOrganizacion, Usuario, Evento, Resena]),
+    MailerModule,
+    SocialModule,
   ],
   controllers: [OrganizacionesController],
   providers: [OrganizacionesService],

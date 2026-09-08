@@ -50,8 +50,8 @@ export function CrearEventoModal({
               <Link2 className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">Publicar desde URL</h3>
-              <p className="text-sm text-slate-500">
+              <h3 className="font-semibold text-white">Publicar desde URL</h3>
+              <p className="text-sm text-white/50">
                 Importa datos desde Instagram, Facebook, TikTok u otro enlace
               </p>
             </div>
@@ -75,14 +75,14 @@ export function CrearEventoModal({
         </div>
 
         {/* Opción B: Crear con formulario */}
-        <div className="rounded-lg border border-slate-200 p-4">
+        <div className="rounded-lg border border-white/10 p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
               <FileText className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900">Crear con formulario</h3>
-              <p className="text-sm text-slate-500">
+              <h3 className="font-semibold text-white">Crear con formulario</h3>
+              <p className="text-sm text-white/50">
                 Completa todos los detalles del evento manualmente
               </p>
             </div>

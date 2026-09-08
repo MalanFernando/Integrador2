@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -39,9 +38,12 @@ export default function LoginPage() {
       }
       router.replace('/dashboard');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Error al iniciar sesión',
-      );
+      const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
+      if (message.includes('verifica tu correo') || message.includes('pendiente') || message.includes('verificar')) {
+        router.push(`/verificar-correo?email=${encodeURIComponent(values.email)}`);
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function LoginPage() {
           className="space-y-6 rounded-lg border border-white/10 p-8"
         >
           <div>
-            <h2 className="font-clash text-xl font-semibold text-white">
+            <h2 className="text-xl font-semibold text-white">
               Iniciar sesión
             </h2>
             <p className="mt-1 text-sm text-white/50">
@@ -112,13 +114,6 @@ export default function LoginPage() {
             )}
           </Button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-white/50">
-          ¿No tienes cuenta?{' '}
-          <Link href="/register" className="text-white hover:underline">
-            Regístrate
-          </Link>
-        </p>
       </div>
     </div>
   );

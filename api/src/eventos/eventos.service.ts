@@ -7,9 +7,12 @@ import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Evento } from './entities/evento.entity.js';
 import { Resena } from '../resenas/entities/resena.entity.js';
+import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { OrganizacionesService } from '../organizaciones/organizaciones.service.js';
+import { SocialService } from '../social/social.service.js';
 import { CreateEventoDto } from './dto/create-evento.dto.js';
 import { UpdateEventoDto } from './dto/update-evento.dto.js';
+import { publicUsuario } from '../common/utils.js';
 
 export interface EventoSearchParams {
   estado?: string;
@@ -17,10 +20,13 @@ export interface EventoSearchParams {
   q?: string;
   fechaDesde?: string;
   fechaHasta?: string;
+  precioMin?: string;
   precioMax?: string;
+  gratis?: string;
   lat?: string;
   lng?: string;
   radioKm?: string;
+  sort?: string;
   page?: string;
   limit?: string;
 }
@@ -30,9 +36,50 @@ export class EventosService {
   constructor(
     @InjectRepository(Evento) private readonly eventosRepo: Repository<Evento>,
     @InjectRepository(Resena) private readonly resenasRepo: Repository<Resena>,
+    @InjectRepository(Usuario)
+    private readonly usuariosRepo: Repository<Usuario>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly organizacionesService: OrganizacionesService,
+    private readonly socialService: SocialService,
   ) {}
+
+  private async notificarAdmins(
+    evento: Evento,
+    accion: string,
+    motivo?: string,
+  ) {
+    const admins = await this.usuariosRepo.find({
+      where: { rol: 'admin', estado: 'activo' },
+    });
+    const tituloMap: Record<string, string> = {
+      ocultar: 'Evento oculto',
+      mostrar: 'Evento visible',
+      suspender: 'Evento suspendido',
+      eliminar: 'Evento eliminado',
+    };
+    const mensajeMap: Record<string, string> = {
+      ocultar: `El organizador ocultó el evento "${evento.titulo}".${motivo ? ` Motivo: ${motivo}` : ''}`,
+      mostrar: `El organizador hizo visible el evento "${evento.titulo}".`,
+      suspender: `El organizador suspendió el evento "${evento.titulo}".${motivo ? ` Motivo: ${motivo}` : ''}`,
+      eliminar: `El organizador eliminó el evento "${evento.titulo}".${motivo ? ` Motivo: ${motivo}` : ''}`,
+    };
+    await Promise.all(
+      admins.map((admin) =>
+        this.socialService.crear(
+          admin.id,
+          'evento_accion',
+          tituloMap[accion] ?? 'Evento modificado',
+          mensajeMap[accion] ?? `Evento "${evento.titulo}" fue modificado.`,
+          {
+            eventoId: evento.id,
+            organizadorId: evento.organizadorId,
+            accion,
+            motivo: motivo ?? null,
+          },
+        ),
+      ),
+    );
+  }
 
   async create(userId: string, dto: CreateEventoDto) {
     this.validateFechas(dto.fechaInicio, dto.fechaFin);
@@ -101,7 +148,20 @@ export class EventosService {
       dto.esGratuito,
       dto.informacionPago as unknown as Record<string, unknown> | null,
     );
-    await this.assertMaxEventosTotal(adminId);
+
+    const targetOrganizadorId = dto.organizadorId?.trim() || adminId;
+    if (targetOrganizadorId !== adminId) {
+      const target: Array<{ rol: string }> = await this.dataSource.query(
+        `SELECT rol FROM usuarios WHERE id = $1 AND deleted_at IS NULL`,
+        [targetOrganizadorId],
+      );
+      if (!target[0] || target[0].rol !== 'organizador') {
+        throw new BadRequestException(
+          'El usuario seleccionado no es un organizador válido',
+        );
+      }
+    }
+    await this.assertMaxEventosActivos(targetOrganizadorId);
     await this.validateHorariosCartelera(
       dto.usuariosCartelera,
       dto.fechaInicio,
@@ -118,7 +178,7 @@ export class EventosService {
 
     const evento = await this.eventosRepo.save(
       this.eventosRepo.create({
-        organizadorId: adminId,
+        organizadorId: targetOrganizadorId,
         categoriaId: dto.categoriaId,
         ubicacionId: dto.ubicacionId,
         creadoPor: adminId,
@@ -159,33 +219,73 @@ export class EventosService {
     return this.eventosRepo.save(evento);
   }
 
+  async updateVisibilidad(
+    id: string,
+    visibilidad: string,
+    userId: string,
+    rolUsuario: string,
+    motivo?: string,
+  ) {
+    const evento = await this.findForEdit(id, userId, rolUsuario);
+    evento.visibilidad = visibilidad;
+    if (visibilidad === 'oculto' && motivo) {
+      evento.motivoOculto = motivo;
+    }
+    await this.eventosRepo.save(evento);
+    if (visibilidad === 'oculto' || visibilidad === 'publico') {
+      const accion = visibilidad === 'oculto' ? 'ocultar' : 'mostrar';
+      await this.notificarAdmins(evento, accion, motivo);
+    }
+    return this.detail(id);
+  }
+
   async search(params: EventoSearchParams) {
     const estado = params.estado ?? 'aprobado';
     const categoriaId = params.categoriaId ? Number(params.categoriaId) : null;
     const q = params.q || null;
     const fechaDesde = params.fechaDesde || null;
     const fechaHasta = params.fechaHasta || null;
-    const precioMax = params.precioMax ? Number(params.precioMax) : null;
+    const precioMin =
+      params.precioMin !== undefined && params.precioMin !== ''
+        ? Number(params.precioMin)
+        : null;
+    const precioMax =
+      params.precioMax !== undefined && params.precioMax !== ''
+        ? Number(params.precioMax)
+        : null;
+    const gratis =
+      params.gratis === 'true'
+        ? true
+        : params.gratis === 'false'
+          ? false
+          : null;
     const lat =
       params.lat != null && params.lat !== '' ? Number(params.lat) : null;
     const lng =
       params.lng != null && params.lng !== '' ? Number(params.lng) : null;
     const radioKm = params.radioKm ? Number(params.radioKm) : null;
+    const sort =
+      params.sort === 'asc' || params.sort === 'desc' ? params.sort : null;
     const limit = Math.min(Math.max(Number(params.limit ?? 20) || 20, 1), 100);
     const page = Math.max(Number(params.page ?? 1) || 1, 1);
     const offset = (page - 1) * limit;
 
     const where = `
-      e.deleted_at IS NULL AND e.estado = $1
+      e.deleted_at IS NULL AND ($1::text = 'todos' OR e.estado::text = $1)
       AND ($2::int IS NULL OR e.categoria_id = $2)
       AND ($3::text IS NULL OR e.titulo ILIKE '%' || $3 || '%')
       AND ($4::timestamptz IS NULL OR e.fecha_inicio >= $4)
       AND ($5::timestamptz IS NULL OR e.fecha_fin <= $5)
       AND ($6::numeric IS NULL OR EXISTS (
         SELECT 1 FROM jsonb_array_elements(e.localidades) AS elem
-        WHERE (elem->>'precio')::numeric <= $6
+        WHERE (elem->>'precio')::numeric >= $6
       ))
-      AND ($7::numeric IS NULL OR (ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000) <= $9)
+      AND ($7::numeric IS NULL OR EXISTS (
+        SELECT 1 FROM jsonb_array_elements(e.localidades) AS elem
+        WHERE (elem->>'precio')::numeric <= $7
+      ))
+      AND ($8::boolean IS NULL OR e.es_gratuito = $8)
+      AND ($11::numeric IS NULL OR $9::numeric IS NULL OR (ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($10, $9), 4326)::geography) / 1000) <= $11)
     `;
     const paramsArr = [
       estado,
@@ -193,12 +293,25 @@ export class EventosService {
       q,
       fechaDesde,
       fechaHasta,
+      precioMin,
       precioMax,
+      gratis,
       lat,
       lng,
       radioKm,
     ];
-    const from = `FROM eventos e JOIN categorias cat ON cat.id = e.categoria_id LEFT JOIN ubicaciones u ON u.id = e.ubicacion_id WHERE ${where}`;
+    const from = `FROM eventos e
+      JOIN categorias cat ON cat.id = e.categoria_id
+      LEFT JOIN ubicaciones u ON u.id = e.ubicacion_id
+      LEFT JOIN usuarios org ON org.id = e.organizador_id
+      WHERE ${where}`;
+
+    let orderBy = 'e.fecha_inicio ASC';
+    if (sort === 'asc') {
+      orderBy = 'e.titulo ASC';
+    } else if (sort === 'desc') {
+      orderBy = 'e.titulo DESC';
+    }
 
     const totalRes: Array<{ total: number }> = await this.dataSource.query(
       `SELECT COUNT(*)::int AS total ${from}`,
@@ -206,15 +319,17 @@ export class EventosService {
     );
     const items: Array<Record<string, unknown>> = await this.dataSource.query(
       `SELECT e.id, e.titulo, e.descripcion, e.fecha_inicio AS "fechaInicio", e.fecha_fin AS "fechaFin",
-         e.aforo, e.imagenes, e.online, e.visibilidad, e.estado,
+         e.aforo, e.imagenes, e.online, e.visibilidad, e.estado, e.es_gratuito AS "esGratuito",
          e.categoria_id AS "categoriaId", e.organizador_id AS "organizadorId",
          e.ubicacion_id AS "ubicacionId", e.created_at AS "createdAt",
          cat.nombre AS "categoriaNombre", cat.color_hex AS "categoriaColor",
          u.latitud, u.longitud,
-          CASE WHEN $7::numeric IS NOT NULL AND $9::numeric IS NOT NULL
-               THEN ROUND((ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($8, $7), 4326)::geography) / 1000)::numeric, 2)
-               ELSE NULL END AS "distanciaKm"
-       ${from} ORDER BY e.fecha_inicio ASC LIMIT $10 OFFSET $11`,
+         org.nombre AS "organizadorNombre", org.foto_perfil_url AS "organizadorFotoPerfilUrl",
+         (SELECT MIN((elem->>'precio')::numeric) FROM jsonb_array_elements(e.localidades) elem) AS "precioMin",
+           CASE WHEN $9::numeric IS NOT NULL AND $11::numeric IS NOT NULL
+                THEN ROUND((ST_Distance(u.geom, ST_SetSRID(ST_MakePoint($10, $9), 4326)::geography) / 1000)::numeric, 2)
+                ELSE NULL END AS "distanciaKm"
+       ${from} ORDER BY ${orderBy} LIMIT $12 OFFSET $13`,
       [...paramsArr, limit, offset],
     );
     return { items, total: totalRes[0]?.total ?? 0, page, limit };
@@ -231,18 +346,40 @@ export class EventosService {
     });
     if (!evento || evento.deletedAt)
       throw new NotFoundException('Evento no encontrado');
-    const resenas = await this.resenasRepo.find({
+    const resenasRaw = await this.resenasRepo.find({
       where: { eventoId: id, estado: 'visible' },
       relations: { autor: true },
       order: { createdAt: 'DESC' },
     });
-    const { ubicacion, ...rest } = evento;
+    const resenas = resenasRaw.map((r) => ({
+      id: r.id,
+      eventoId: r.eventoId,
+      autorId: r.autorId,
+      autor: r.autor
+        ? {
+            id: r.autor.id,
+            nombre: r.autor.nombre,
+            apellido: r.autor.apellido,
+            slug: r.autor.slug,
+            fotoPerfilUrl: r.autor.fotoPerfilUrl,
+          }
+        : null,
+      evento: r.evento
+        ? { id: r.evento.id, titulo: r.evento.titulo }
+        : undefined,
+      puntuacion: r.puntuacion,
+      comentario: r.comentario,
+      estado: r.estado,
+      createdAt: r.createdAt,
+    }));
+    const { ubicacion, organizador, ...rest } = evento;
     return {
       ...rest,
       latitud: ubicacion?.latitud ?? null,
       longitud: ubicacion?.longitud ?? null,
       direccion: ubicacion ? ubicacion.direccionLinea1 : null,
       ciudad: ubicacion?.ciudad ?? null,
+      organizador: organizador ? publicUsuario(organizador) : null,
       resenas,
     };
   }
@@ -375,12 +512,23 @@ export class EventosService {
     return this.detail(id);
   }
 
-  async cancel(id: string, userId: string, rolUsuario: string) {
+  async cancel(
+    id: string,
+    userId: string,
+    rolUsuario: string,
+    motivo?: string,
+  ) {
     const evento = await this.findForEdit(id, userId, rolUsuario);
     if (evento.estado === 'cancelado' || evento.estado === 'finalizado')
       throw new BadRequestException('El evento ya está en un estado terminal');
     evento.estado = 'cancelado';
+    if (motivo) {
+      evento.motivoEliminado = motivo;
+    }
     await this.eventosRepo.save(evento);
+    if (motivo) {
+      await this.notificarAdmins(evento, 'eliminar', motivo);
+    }
     return this.detail(id);
   }
 

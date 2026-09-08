@@ -28,7 +28,7 @@ async function bootstrap() {
       process.env.ADMIN_FRONTEND_URL || 'http://localhost:3002',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
     maxAge: 86400,
   });

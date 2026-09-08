@@ -20,12 +20,19 @@ export interface RegisterData {
   cedula?: string;
 }
 
+interface RegisterResponse {
+  message: string;
+  email: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (data: RegisterData) => Promise<User>;
+  register: (data: RegisterData) => Promise<RegisterResponse>;
   logout: () => void;
+  verifyEmail: (email: string, codigo: string) => Promise<AuthResponse>;
+  resendCode: (email: string) => Promise<{ message: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -58,10 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (data: RegisterData) => {
-    const res = await api.post<AuthResponse>('/auth/register', data);
-    api.setToken(res.access_token);
-    setUser(res.user);
-    return res.user;
+    const res = await api.post<RegisterResponse>('/auth/register', data);
+    return res;
   }, []);
 
   const logout = useCallback(() => {
@@ -69,8 +74,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const verifyEmail = useCallback(async (email: string, codigo: string) => {
+    const res = await api.post<AuthResponse>('/auth/verify-email', { email, codigo });
+    api.setToken(res.access_token);
+    setUser(res.user);
+    return res;
+  }, []);
+
+  const resendCode = useCallback(async (email: string) => {
+    const res = await api.post<{ message: string }>('/auth/re-send-code', { email });
+    return res;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, verifyEmail, resendCode }}>
       {children}
     </AuthContext.Provider>
   );

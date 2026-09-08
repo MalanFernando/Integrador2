@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Usuario } from './entities/usuario.entity.js';
 import { Evento } from '../eventos/entities/evento.entity.js';
 import { Seguidor } from '../social/entities/seguidor.entity.js';
@@ -43,6 +43,10 @@ export class UsuariosService {
     return this.usuariosRepo.findOne({ where: { id } });
   }
 
+  async findById(id: string): Promise<Usuario | null> {
+    return this.usuariosRepo.findOne({ where: { id } });
+  }
+
   async findBySlug(slug: string): Promise<Usuario | null> {
     return this.usuariosRepo.findOne({ where: { slug } });
   }
@@ -54,6 +58,9 @@ export class UsuariosService {
     apellido?: string;
     telefono?: string;
     slug?: string;
+    estado?: string;
+    rol?: string;
+    fotoPerfilUrl?: string;
   }): Promise<Usuario> {
     let finalSlug: string | null = null;
     if (data.nombre) {
@@ -69,6 +76,9 @@ export class UsuariosService {
       apellido: data.apellido ?? '',
       telefono: data.telefono,
       slug: finalSlug,
+      estado: data.estado ?? 'activo',
+      rol: data.rol ?? 'usuario',
+      fotoPerfilUrl: data.fotoPerfilUrl,
     });
     return this.usuariosRepo.save(usuario);
   }
@@ -104,7 +114,8 @@ export class UsuariosService {
     }
 
     Object.assign(usuario, dto);
-    return this.usuariosRepo.save(usuario);
+    const saved = await this.usuariosRepo.save(usuario);
+    return withoutPassword(saved);
   }
 
   async updatePassword(id: string, passwordHash: string): Promise<void> {
@@ -115,13 +126,28 @@ export class UsuariosService {
     await this.usuariosRepo.save(usuario);
   }
 
-  async publicProfile(id: string) {
+  async updateEstado(id: string, estado: string): Promise<void> {
+    await this.usuariosRepo.update(id, { estado });
+  }
+
+  async marcarUltimoAcceso(id: string): Promise<void> {
+    await this.usuariosRepo.update(id, { ultimoAcceso: new Date() });
+  }
+
+  async publicProfile(idOrSlug: string) {
+    let id = idOrSlug;
+    if (!/^\d+$/.test(idOrSlug)) {
+      const bySlug = await this.findBySlug(idOrSlug);
+      if (bySlug) {
+        id = bySlug.id;
+      }
+    }
     const usuario = await this.findOneById(id);
     if (!usuario || usuario.deletedAt)
       throw new NotFoundException('Usuario no encontrado');
     const [eventos, seguidores] = await Promise.all([
       this.eventosRepo.find({
-        where: { organizadorId: id, estado: 'aprobado' },
+        where: { organizadorId: id, estado: In(['aprobado', 'finalizado']) },
         order: { fechaInicio: 'DESC' },
         take: 50,
       }),
@@ -180,6 +206,33 @@ export class UsuariosService {
       }
     }
 
-    return { perfilActivo, rol: usuario.rol };
+    // Persistir el cambio de perfil en la BD
+    await this.usuariosRepo.update(userId, {
+      perfilActivo: perfilActivo,
+    });
+
+    return { perfilActivo, rol: usuario.rol, slug: usuario.slug };
+  }
+
+  async habilitarOrganizador(userId: string) {
+    const usuario = await this.findOneById(userId);
+    if (!usuario || usuario.deletedAt)
+      throw new NotFoundException('Usuario no encontrado');
+
+    if (usuario.rol === 'organizador' || usuario.rol === 'admin') {
+      const slug = usuario.slug ?? (await this.generateSlug(usuario));
+      return { slug, rol: usuario.rol };
+    }
+
+    usuario.rol = 'organizador';
+    usuario.slug = await this.generateSlug(usuario);
+    usuario.perfilActivo = 'organizador';
+    await this.usuariosRepo.save(usuario);
+    return { slug: usuario.slug, rol: 'organizador' };
+  }
+
+  private async generateSlug(usuario: Usuario): Promise<string> {
+    const base = slugify(`${usuario.nombre}-${usuario.apellido ?? ''}`.trim());
+    return this.ensureUniqueSlug(base);
   }
 }

@@ -125,6 +125,12 @@ export class Evento {
   @Column({ name: 'motivo_rechazo', type: 'text', nullable: true })
   motivoRechazo: string | null;
 
+  @Column({ name: 'motivo_oculto', type: 'text', nullable: true })
+  motivoOculto: string | null;
+
+  @Column({ name: 'motivo_eliminado', type: 'text', nullable: true })
+  motivoEliminado: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

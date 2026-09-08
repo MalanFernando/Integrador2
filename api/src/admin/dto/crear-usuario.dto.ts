@@ -2,8 +2,10 @@ import {
   IsEmail,
   IsIn,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   MaxLength,
   MinLength,
@@ -74,4 +76,32 @@ export class CrearUsuarioDto {
     message: 'El slug solo puede contener letras minúsculas, números y guiones',
   })
   slug?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2000)
+  fotoPerfilUrl?: string;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2000)
+  fotoPortada?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  biografia?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  etiqueta?: string;
+
+  @IsOptional()
+  @IsObject()
+  redesSociales?: Record<string, string>;
+
+  @IsOptional()
+  @IsObject()
+  ubicacion?: Record<string, unknown>;
 }

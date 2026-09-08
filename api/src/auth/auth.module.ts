@@ -8,12 +8,16 @@ import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 import { GoogleStrategy } from './strategies/google.strategy.js';
 import { PasswordResetToken } from './entities/password-reset-token.entity.js';
-import { AuthMailerService } from './auth-mailer.service.js';
+import { EmailVerificationCode } from './entities/email-verification-code.entity.js';
+import { MailerModule } from './mailer.module.js';
 import { UsuariosModule } from '../usuarios/usuarios.module.js';
+import { OrganizacionesModule } from '../organizaciones/organizaciones.module.js';
 
 @Module({
   imports: [
     UsuariosModule,
+    OrganizacionesModule,
+    MailerModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -25,7 +29,7 @@ import { UsuariosModule } from '../usuarios/usuarios.module.js';
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([PasswordResetToken]),
+    TypeOrmModule.forFeature([PasswordResetToken, EmailVerificationCode]),
   ],
   controllers: [AuthController],
   providers: [
@@ -46,7 +50,6 @@ import { UsuariosModule } from '../usuarios/usuarios.module.js';
         return new GoogleStrategy(configService);
       },
     },
-    AuthMailerService,
   ],
   exports: [AuthService],
 })

@@ -1,5 +1,5 @@
 export type RolUsuario = 'admin' | 'organizador' | 'usuario';
-export type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo';
+export type EstadoUsuario = 'activo' | 'suspendido' | 'inactivo' | 'pendiente';
 export type EstadoEvento =
   | 'borrador'
   | 'pendiente'
@@ -25,11 +25,16 @@ export interface User {
   telefono?: string | null;
   cedula?: string | null;
   fotoPerfilUrl?: string | null;
+  fotoPortada?: string | null;
   biografia?: string | null;
+  etiqueta?: string | null;
   redesSociales?: Record<string, unknown>;
+  ubicacion?: Record<string, unknown> | null;
   rol: RolUsuario;
   estado: EstadoUsuario;
   slug?: string | null;
+  ultimoAcceso?: string | null;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -71,6 +76,8 @@ export interface EventSearchItem {
   latitud: number | null;
   longitud: number | null;
   distanciaKm: number | null;
+  organizadorNombre?: string | null;
+  organizadorFotoPerfilUrl?: string | null;
 }
 
 export interface Categoria {
@@ -125,6 +132,7 @@ export interface Resena {
   motivoReporte: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   autor?: {
     id: string;
     nombre: string;
@@ -192,6 +200,7 @@ export interface Reserva {
   motivoVerificacion?: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   evento?: {
     id: string;
     titulo: string;
@@ -207,6 +216,8 @@ export interface Reserva {
     apellido: string;
     email: string;
     telefono?: string | null;
+    fotoPerfilUrl?: string | null;
+    createdAt?: string;
   } | null;
 }
 
@@ -301,6 +312,9 @@ export interface ReporteSistema {
     eventos: number;
     reservas: number;
     resenas: number;
+    organizadores: number;
+    categorias: number;
+    eventosPendientes: number;
     reportesPendientes: number;
   };
   eventosPorCategoria: EventoPorCategoria[];
@@ -326,6 +340,17 @@ export interface DashboardAdmin {
   periodo: { inicio: string; fin: string };
 }
 
+export interface Notificacion {
+  id: string;
+  usuarioId: string;
+  tipo: string;
+  titulo: string;
+  mensaje: string;
+  datosJson: Record<string, unknown>;
+  leida: boolean;
+  createdAt: string;
+}
+
 export interface BitacoraEntry {
   id: string;
   usuarioId: string | null;
@@ -335,7 +360,15 @@ export interface BitacoraEntry {
   detalles: Record<string, unknown> | null;
   ipAddress: string | null;
   createdAt: string;
-  usuario?: { id: string; nombre: string; apellido: string } | null;
+  usuario?: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    email?: string;
+    rol?: RolUsuario;
+    estado?: EstadoUsuario;
+    fotoPerfilUrl?: string | null;
+  } | null;
 }
 
 export interface Provincia {
@@ -347,6 +380,71 @@ export interface Ciudad {
   id: number;
   provinciaId: number;
   nombre: string;
+}
+
+export interface EstadisticasBitacora {
+  total: number;
+  usuariosActivos: number;
+  reportadas: number;
+  enRevision: number;
+  eliminadas: number;
+}
+
+export interface ConfiguracionPlataforma {
+  nombrePlataforma: string;
+  contactoSoporte: string;
+  moneda: string;
+}
+
+export interface EstadisticasEventos {
+  total: number;
+  activos: number;
+  inactivos: number;
+  enRevision: number;
+  eliminados: number;
+  reportados: number;
+}
+
+export interface EstadisticasResenas {
+  total: number;
+  nuevas: number;
+  reportadas: number;
+  eliminadas: number;
+}
+
+export interface EstadisticasReservas {
+  total: number;
+  nuevas: number;
+  reportadas: number;
+  eliminadas: number;
+}
+
+export interface EventoConReservas {
+  id: string;
+  titulo: string;
+  imagenes: string[];
+  ubicacion: string;
+  fechaInicio: string;
+  estado: EstadoEvento;
+  createdAt: string;
+  organizadorId: string | null;
+  organizadorNombre: string | null;
+  totalReservas: number;
+  reservasValidas: number;
+}
+
+export interface OrganizadorResumen {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  fotoPerfilUrl: string | null;
+  estado: EstadoUsuario;
+  ubicacion: Record<string, unknown> | null;
+  createdAt: string;
+  deletedAt: string | null;
+  totalEventos: number;
+  totalMiembros: number;
 }
 
 export interface Ubicacion {

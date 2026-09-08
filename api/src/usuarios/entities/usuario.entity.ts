@@ -26,6 +26,9 @@ export class Usuario {
   @Column({ length: 20, nullable: true })
   telefono: string;
 
+  @Column({ length: 10, nullable: true })
+  cedula: string;
+
   @Column({ name: 'foto_perfil_url', type: 'text', nullable: true })
   fotoPerfilUrl: string;
 
@@ -53,13 +56,24 @@ export class Usuario {
 
   @Column({
     type: 'enum',
-    enum: ['activo', 'suspendido', 'inactivo'],
+    enum: ['activo', 'suspendido', 'inactivo', 'pendiente'],
     default: 'activo',
   })
   estado: string;
 
+  @Column({
+    name: 'perfil_activo',
+    type: 'enum',
+    enum: ['usuario', 'organizador'],
+    default: 'usuario',
+  })
+  perfilActivo: string;
+
   @Column({ name: 'plan_id', type: 'int', nullable: true })
   planId: number | null;
+
+  @Column({ name: 'ultimo_acceso', type: 'timestamptz', nullable: true })
+  ultimoAcceso: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

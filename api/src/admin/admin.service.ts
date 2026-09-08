@@ -20,6 +20,7 @@ import { Ubicacion } from '../geo/entities/ubicacion.entity.js';
 import { Categoria } from '../categorias/entities/categoria.entity.js';
 import { Favorito } from '../favoritos/entities/favorito.entity.js';
 import { EventVisita } from '../eventos/estadisticas/event-visita.entity.js';
+import { ConfiguracionPlataforma } from './entities/configuracion-plataforma.entity.js';
 import { EventosService } from '../eventos/eventos.service.js';
 import { CreateEventoDto } from '../eventos/dto/create-evento.dto.js';
 import { UpdateEventoDto } from '../eventos/dto/update-evento.dto.js';
@@ -116,6 +117,8 @@ export class AdminService {
     private readonly favoritosRepo: Repository<Favorito>,
     @InjectRepository(EventVisita)
     private readonly visitasRepo: Repository<EventVisita>,
+    @InjectRepository(ConfiguracionPlataforma)
+    private readonly configuracionRepo: Repository<ConfiguracionPlataforma>,
     private readonly eventosService: EventosService,
     private readonly reservasService: ReservasService,
     private readonly resenasService: ResenasService,
@@ -189,13 +192,94 @@ export class AdminService {
     };
   }
 
-  async listUsuarios() {
-    const usuarios = await this.usuariosRepo.find({
-      where: { deletedAt: IsNull() },
-      order: { createdAt: 'DESC' },
-      take: 200,
-    });
+  async listUsuarios(
+    filters: {
+      incluirEliminados?: boolean;
+      buscar?: string;
+      rol?: string;
+      estado?: string;
+      orden?: string;
+      limit?: number;
+    } = {},
+  ) {
+    const qb = this.usuariosRepo.createQueryBuilder('usuario');
+
+    if (!filters.incluirEliminados) {
+      qb.andWhere('usuario.deleted_at IS NULL');
+    }
+    if (filters.buscar) {
+      qb.andWhere(
+        "(usuario.nombre ILIKE :buscar OR usuario.apellido ILIKE :buscar OR usuario.email ILIKE :buscar OR CONCAT(usuario.nombre, ' ', usuario.apellido) ILIKE :buscar)",
+        { buscar: `%${filters.buscar}%` },
+      );
+    }
+    if (filters.rol) {
+      qb.andWhere('usuario.rol = :rol', { rol: filters.rol });
+    }
+    if (filters.estado) {
+      qb.andWhere('usuario.estado = :estado', { estado: filters.estado });
+    }
+
+    if (filters.orden === 'nombre_asc') {
+      qb.orderBy('usuario.nombre', 'ASC').addOrderBy('usuario.apellido', 'ASC');
+    } else if (filters.orden === 'nombre_desc') {
+      qb.orderBy('usuario.nombre', 'DESC').addOrderBy(
+        'usuario.apellido',
+        'DESC',
+      );
+    } else {
+      qb.orderBy('usuario.created_at', 'DESC');
+    }
+
+    qb.take(Math.min(filters.limit ?? 500, 500));
+
+    const usuarios = await qb.getMany();
     return usuarios.map((u) => withoutPassword(u));
+  }
+
+  async estadisticasUsuarios() {
+    const rows: Array<{ rol: string; estado: string; total: string }> =
+      await this.usuariosRepo
+        .createQueryBuilder('usuario')
+        .select('usuario.rol', 'rol')
+        .addSelect('usuario.estado', 'estado')
+        .addSelect('COUNT(*)', 'total')
+        .where('usuario.deleted_at IS NULL')
+        .groupBy('usuario.rol')
+        .addGroupBy('usuario.estado')
+        .getRawMany();
+
+    const totalEliminados: number = await this.usuariosRepo
+      .createQueryBuilder('usuario')
+      .where('usuario.deleted_at IS NOT NULL')
+      .getCount();
+
+    let total = 0;
+    let activos = 0;
+    let organizadores = 0;
+    let admins = 0;
+    let inactivos = 0;
+    let suspendidos = 0;
+
+    for (const r of rows) {
+      const n = parseInt(r.total, 10);
+      total += n;
+      if (r.estado === 'activo') activos += n;
+      if (r.estado === 'inactivo') inactivos += n;
+      if (r.estado === 'suspendido') suspendidos += n;
+      if (r.rol === 'organizador') organizadores += n;
+      if (r.rol === 'admin') admins += n;
+    }
+
+    return {
+      total,
+      activos,
+      organizadores,
+      admins,
+      inactivos,
+      suspendidos,
+      eliminados: totalEliminados,
+    };
   }
 
   async detalleUsuario(id: string) {
@@ -242,9 +326,16 @@ export class AdminService {
       nombre: dto.nombre,
       apellido: dto.apellido,
       telefono: dto.telefono,
+      cedula: dto.cedula,
       rol: dto.rol ?? 'usuario',
       estado: dto.estado ?? 'activo',
       slug: finalSlug,
+      fotoPerfilUrl: dto.fotoPerfilUrl,
+      fotoPortada: dto.fotoPortada,
+      biografia: dto.biografia,
+      etiqueta: dto.etiqueta,
+      redesSociales: dto.redesSociales ?? {},
+      ubicacion: dto.ubicacion ?? null,
     });
     const saved = await this.usuariosRepo.save(usuario);
 
@@ -280,6 +371,26 @@ export class AdminService {
     if (dto.nombre !== undefined) usuario.nombre = dto.nombre;
     if (dto.apellido !== undefined) usuario.apellido = dto.apellido;
     if (dto.telefono !== undefined) usuario.telefono = dto.telefono;
+    if (dto.cedula !== undefined) usuario.cedula = dto.cedula;
+    if (dto.fotoPerfilUrl !== undefined)
+      usuario.fotoPerfilUrl = dto.fotoPerfilUrl;
+    if (dto.fotoPortada !== undefined) usuario.fotoPortada = dto.fotoPortada;
+    if (dto.biografia !== undefined) usuario.biografia = dto.biografia;
+    if (dto.etiqueta !== undefined) usuario.etiqueta = dto.etiqueta;
+    if (dto.redesSociales !== undefined)
+      usuario.redesSociales = dto.redesSociales;
+    if (dto.ubicacion !== undefined) usuario.ubicacion = dto.ubicacion;
+    if (dto.slug !== undefined) {
+      const normalized = slugify(dto.slug);
+      if (normalized !== usuario.slug) {
+        const slugExists = await this.usuariosRepo.findOne({
+          where: { slug: normalized },
+        });
+        if (slugExists && slugExists.id !== usuario.id)
+          throw new ConflictException('El slug ya está en uso');
+        usuario.slug = normalized;
+      }
+    }
     if (dto.rol !== undefined) {
       if (esCuentaPropia && dto.rol !== 'admin')
         throw new BadRequestException(
@@ -342,8 +453,118 @@ export class AdminService {
     return saved;
   }
 
-  listEventos(estado?: string) {
-    return this.eventosService.search({ estado, limit: '200' });
+  async listOrganizadoresResumen() {
+    const rows: Array<{
+      id: string;
+      nombre: string;
+      apellido: string;
+      email: string;
+      fotoPerfilUrl: string | null;
+      estado: string;
+      ubicacion: Record<string, unknown> | null;
+      createdAt: Date;
+      deletedAt: Date | null;
+      totalEventos: string;
+      totalMiembros: string;
+    }> = await this.usuariosRepo
+      .createQueryBuilder('usuario')
+      .leftJoin(
+        'eventos',
+        'evento',
+        'evento.organizador_id = usuario.id AND evento.deleted_at IS NULL',
+      )
+      .leftJoin(
+        'miembros_organizacion',
+        'miembro',
+        "miembro.organizador_id = usuario.id AND miembro.estado = 'activo'",
+      )
+      .select('usuario.id', 'id')
+      .addSelect('usuario.nombre', 'nombre')
+      .addSelect('usuario.apellido', 'apellido')
+      .addSelect('usuario.email', 'email')
+      .addSelect('usuario.foto_perfil_url', 'fotoPerfilUrl')
+      .addSelect('usuario.estado', 'estado')
+      .addSelect('usuario.ubicacion', 'ubicacion')
+      .addSelect('usuario.created_at', 'createdAt')
+      .addSelect('usuario.deleted_at', 'deletedAt')
+      .addSelect('COUNT(DISTINCT evento.id)', 'totalEventos')
+      .addSelect('COUNT(DISTINCT miembro.id)', 'totalMiembros')
+      .where('usuario.rol = :rol', { rol: 'organizador' })
+      .groupBy('usuario.id')
+      .orderBy('usuario.created_at', 'DESC')
+      .limit(300)
+      .getRawMany();
+
+    return rows.map((r) => ({
+      id: r.id,
+      nombre: r.nombre,
+      apellido: r.apellido,
+      email: r.email,
+      fotoPerfilUrl: r.fotoPerfilUrl,
+      estado: r.estado,
+      ubicacion: r.ubicacion,
+      createdAt: r.createdAt,
+      deletedAt: r.deletedAt,
+      totalEventos: parseInt(r.totalEventos, 10),
+      totalMiembros: parseInt(r.totalMiembros, 10),
+    }));
+  }
+
+  listEventos(filters: {
+    estado?: string;
+    categoriaId?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+  }) {
+    return this.eventosService.search({
+      estado: filters.estado || 'todos',
+      categoriaId: filters.categoriaId,
+      fechaDesde: filters.fechaDesde,
+      fechaHasta: filters.fechaHasta,
+      limit: '200',
+    });
+  }
+
+  async estadisticasEventos() {
+    const porEstadoRaw: Array<{ estado: string; total: string }> =
+      await this.eventosRepo
+        .createQueryBuilder('evento')
+        .select('evento.estado', 'estado')
+        .addSelect('COUNT(*)', 'total')
+        .where('evento.deleted_at IS NULL')
+        .groupBy('evento.estado')
+        .getRawMany();
+
+    const porEstado: Record<string, number> = {};
+    let total = 0;
+    for (const r of porEstadoRaw) {
+      const n = parseInt(r.total, 10);
+      porEstado[r.estado] = n;
+      total += n;
+    }
+
+    const eliminados = await this.eventosRepo
+      .createQueryBuilder('evento')
+      .where('evento.deleted_at IS NOT NULL')
+      .getCount();
+
+    const reportados = await this.reportesRepo
+      .createQueryBuilder('reporte')
+      .select('COUNT(DISTINCT reporte.evento_id)', 'total')
+      .where("reporte.estado = 'pendiente'")
+      .getRawOne<{ total: string }>();
+
+    return {
+      total,
+      activos: porEstado.aprobado ?? 0,
+      inactivos:
+        (porEstado.cancelado ?? 0) +
+        (porEstado.rechazado ?? 0) +
+        (porEstado.borrador ?? 0),
+      enRevision: porEstado.pendiente ?? 0,
+      eliminados,
+      reportados: parseInt(reportados?.total ?? '0', 10),
+    };
   }
 
   async aprobarEvento(id: string, ctx: AdminContext) {
@@ -424,8 +645,31 @@ export class AdminService {
     });
   }
 
-  listResenas(estado?: string) {
-    return this.resenasService.listAll({ estado });
+  listResenas(filters: {
+    estado?: string;
+    buscar?: string;
+    puntuacion?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+    incluirEliminadas?: boolean;
+  }) {
+    return this.resenasService.listAll(filters);
+  }
+
+  estadisticasResenas() {
+    return this.resenasService.estadisticas();
+  }
+
+  async eliminarResena(id: string, ctx: AdminContext) {
+    const resultado = await this.resenasService.eliminar(id, ctx.userId);
+    await this.auditoriaService.registrar({
+      usuarioId: ctx.userId,
+      accion: 'eliminar_resena',
+      tablaAfectada: 'resenas',
+      registroId: id,
+      ipAddress: ctx.ip ?? null,
+    });
+    return resultado;
   }
 
   async moderarResena(
@@ -445,8 +689,132 @@ export class AdminService {
     return resena;
   }
 
-  listReservas(estado?: string) {
-    return this.reservasService.listAll({ estado });
+  listReservas(filters: {
+    estado?: string;
+    eventoId?: string;
+    buscar?: string;
+    localidad?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+    incluirEliminadas?: boolean;
+  }) {
+    return this.reservasService.listAll(filters);
+  }
+
+  estadisticasReservas() {
+    return this.reservasService.estadisticas();
+  }
+
+  async eliminarReserva(id: string, ctx: AdminContext) {
+    const resultado = await this.reservasService.adminEliminar(id, ctx.userId);
+    await this.auditoriaService.registrar({
+      usuarioId: ctx.userId,
+      accion: 'eliminar_reserva',
+      tablaAfectada: 'reservas',
+      registroId: id,
+      ipAddress: ctx.ip ?? null,
+    });
+    return resultado;
+  }
+
+  async eventosConReservasResumen(filters: {
+    buscar?: string;
+    estado?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+  }) {
+    const qb = this.eventosRepo
+      .createQueryBuilder('evento')
+      .leftJoin(
+        'usuarios',
+        'organizador',
+        'organizador.id = evento.organizador_id',
+      )
+      .leftJoin(
+        'ubicaciones',
+        'ubicacion',
+        'ubicacion.id = evento.ubicacion_id',
+      )
+      .leftJoin('ciudades', 'ciudad', 'ciudad.id = ubicacion.ciudad_id')
+      .leftJoin(
+        'reservas',
+        'reserva',
+        'reserva.evento_id = evento.id AND reserva.deleted_at IS NULL',
+      )
+      .select('evento.id', 'id')
+      .addSelect('evento.titulo', 'titulo')
+      .addSelect('evento.imagenes', 'imagenes')
+      .addSelect('evento.online', 'online')
+      .addSelect('evento.fecha_inicio', 'fechaInicio')
+      .addSelect('evento.estado', 'estado')
+      .addSelect('evento.created_at', 'createdAt')
+      .addSelect('organizador.id', 'organizadorId')
+      .addSelect('organizador.nombre', 'organizadorNombre')
+      .addSelect('organizador.apellido', 'organizadorApellido')
+      .addSelect('ciudad.nombre', 'ciudadNombre')
+      .addSelect('COUNT(reserva.id)', 'totalReservas')
+      .addSelect(
+        "COUNT(reserva.id) FILTER (WHERE reserva.estado IN ('confirmada', 'verificada'))",
+        'reservasValidas',
+      )
+      .where('evento.deleted_at IS NULL')
+      .groupBy('evento.id')
+      .addGroupBy('organizador.id')
+      .addGroupBy('ciudad.nombre');
+
+    if (filters.estado) {
+      qb.andWhere('evento.estado = :estado', { estado: filters.estado });
+    }
+    if (filters.fechaDesde) {
+      qb.andWhere('evento.created_at >= :fechaDesde', {
+        fechaDesde: filters.fechaDesde,
+      });
+    }
+    if (filters.fechaHasta) {
+      qb.andWhere('evento.created_at <= :fechaHasta', {
+        fechaHasta: filters.fechaHasta,
+      });
+    }
+    if (filters.buscar) {
+      qb.andWhere(
+        '(evento.titulo ILIKE :buscar OR organizador.nombre ILIKE :buscar OR organizador.apellido ILIKE :buscar)',
+        { buscar: `%${filters.buscar}%` },
+      );
+    }
+
+    qb.orderBy('evento.created_at', 'DESC').limit(300);
+
+    const rows: Array<{
+      id: string;
+      titulo: string;
+      imagenes: string[];
+      online: boolean;
+      fechaInicio: Date;
+      estado: string;
+      createdAt: Date;
+      organizadorId: string | null;
+      organizadorNombre: string | null;
+      organizadorApellido: string | null;
+      ciudadNombre: string | null;
+      totalReservas: string;
+      reservasValidas: string;
+    }> = await qb.getRawMany();
+
+    return rows.map((r) => ({
+      id: r.id,
+      titulo: r.titulo,
+      imagenes: r.imagenes,
+      ubicacion: r.online ? 'En línea' : (r.ciudadNombre ?? 'Sin ubicación'),
+      fechaInicio: r.fechaInicio,
+      estado: r.estado,
+      createdAt: r.createdAt,
+      organizadorId: r.organizadorId,
+      organizadorNombre: r.organizadorNombre
+        ? `${r.organizadorNombre} ${r.organizadorApellido ?? ''}`.trim()
+        : null,
+      totalReservas: parseInt(r.totalReservas, 10),
+      reservasValidas: parseInt(r.reservasValidas, 10),
+    }));
   }
 
   async verificarReserva(id: string, motivo: string, ctx: AdminContext) {
@@ -465,8 +833,20 @@ export class AdminService {
     return reserva;
   }
 
-  listBitacora(tablaAfectada?: string) {
-    return this.auditoriaService.list({ tablaAfectada });
+  listBitacora(filters: {
+    tablaAfectada?: string;
+    buscar?: string;
+    rol?: string;
+    estado?: string;
+    accion?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+  }) {
+    return this.auditoriaService.list(filters);
+  }
+
+  estadisticasBitacora() {
+    return this.auditoriaService.estadisticas();
   }
 
   async intervenirReserva(
@@ -857,6 +1237,9 @@ export class AdminService {
       eventosTotal,
       reservasTotal,
       resenasTotal,
+      organizadoresTotal,
+      categoriasTotal,
+      eventosPendientesTotal,
       reportesPendientes,
       eventosPorCat,
       estadoOrg,
@@ -868,6 +1251,13 @@ export class AdminService {
       this.eventosRepo.count({ where: { deletedAt: IsNull() } }),
       this.reservasRepo.count(),
       this.resenasRepo.count(),
+      this.usuariosRepo.count({
+        where: { rol: 'organizador', deletedAt: IsNull() },
+      }),
+      this.categoriasRepo.count(),
+      this.eventosRepo.count({
+        where: { estado: 'pendiente', deletedAt: IsNull() },
+      }),
       (async () => {
         const [repEventos, repReservas] = await Promise.all([
           this.reportesRepo.count({ where: { estado: 'pendiente' } }),
@@ -961,6 +1351,9 @@ export class AdminService {
         eventos: eventosTotal,
         reservas: reservasTotal,
         resenas: resenasTotal,
+        organizadores: organizadoresTotal,
+        categorias: categoriasTotal,
+        eventosPendientes: eventosPendientesTotal,
         reportesPendientes,
       },
       eventosPorCategoria: eventosPorCat,
@@ -1009,5 +1402,46 @@ export class AdminService {
       actividadReciente: actividad,
       periodo: { inicio: inicio.toISOString(), fin: fin.toISOString() },
     };
+  }
+
+  async getConfiguracion() {
+    const filas = await this.configuracionRepo.find();
+    const mapa: Record<string, string | null> = {};
+    for (const f of filas) mapa[f.clave] = f.valor;
+    return {
+      nombrePlataforma: mapa.nombre_plataforma ?? 'Hasta la Vuelta',
+      contactoSoporte: mapa.contacto_soporte ?? '',
+      moneda: mapa.moneda ?? 'USD',
+    };
+  }
+
+  async actualizarConfiguracion(
+    data: {
+      nombrePlataforma?: string;
+      contactoSoporte?: string;
+      moneda?: string;
+    },
+    ctx: AdminContext,
+  ) {
+    const entradas: Array<[string, string | undefined]> = [
+      ['nombre_plataforma', data.nombrePlataforma],
+      ['contacto_soporte', data.contactoSoporte],
+      ['moneda', data.moneda],
+    ];
+    for (const [clave, valor] of entradas) {
+      if (valor === undefined) continue;
+      await this.configuracionRepo.upsert(
+        { clave, valor, updatedBy: ctx.userId },
+        ['clave'],
+      );
+    }
+    await this.auditoriaService.registrar({
+      usuarioId: ctx.userId,
+      accion: 'actualizar_configuracion',
+      tablaAfectada: 'configuracion_plataforma',
+      registroId: null,
+      ipAddress: ctx.ip ?? null,
+    });
+    return this.getConfiguracion();
   }
 }

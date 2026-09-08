@@ -399,6 +399,18 @@ export const categoriaSchema = z.object({
     .or(z.literal('')),
 });
 
+export const verificarCodigoSchema = z.object({
+  email: emailSchema,
+  codigo: z
+    .string()
+    .length(6, 'El código debe tener exactamente 6 dígitos')
+    .regex(/^\d{6}$/, 'El código debe contener solo números'),
+});
+
+export const reenviarCodigoSchema = z.object({
+  email: emailSchema,
+});
+
 export type LoginValues = z.infer<typeof loginSchema>;
 export type RegisterValues = z.infer<typeof registerSchema>;
 export type CrearUsuarioValues = z.infer<typeof crearUsuarioSchema>;
@@ -409,3 +421,5 @@ export type PreguntaFrecuenteInput = z.infer<typeof preguntaFrecuenteSchema>;
 export type InformacionPagoInput = z.infer<typeof informacionPagoSchema>;
 export type EventoFormValues = z.infer<typeof eventoFormSchema>;
 export type CategoriaValues = z.infer<typeof categoriaSchema>;
+export type VerificarCodigoValues = z.infer<typeof verificarCodigoSchema>;
+export type ReenviarCodigoValues = z.infer<typeof reenviarCodigoSchema>;

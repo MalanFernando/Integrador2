@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { EventoForm } from '@/components/eventos/evento-form';
 import type { Category, ScrapedEvento } from '@/types';
-import { FileText, Link2, Loader2, ArrowLeft } from 'lucide-react';
+import { CalendarClock, ChevronLeft, FileText, Link2, Loader2, ArrowLeft } from 'lucide-react';
 
 function Loader({ mensaje }: { mensaje?: string }) {
   return (
@@ -133,18 +133,68 @@ function NuevoContenido() {
 
   if (modo === 'url' && url && scrapeResultado) {
     return (
-      <EventoForm
-        slug={slug}
-        mode="crear"
-        categorias={categorias}
-        scraped={scrapeResultado}
-        urlImportada={url}
-      />
+      <div className="w-full">
+        <div className="mx-auto max-w-3xl px-4 pt-6">
+          <button
+            onClick={() => router.push(`/host/${slug}`)}
+            className="mb-6 flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Eventos</span>
+            <span className="text-white/30">/</span>
+            <span className="text-white">Crear evento</span>
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#222]">
+              <CalendarClock className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-[#F5F5F5]">Crear evento</h1>
+              <p className="text-sm text-white/50">
+                Campos obligatorios <span className="text-[#D94242]">*</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <EventoForm
+          slug={slug}
+          mode="crear"
+          categorias={categorias}
+          scraped={scrapeResultado}
+          urlImportada={url}
+        />
+      </div>
     );
   }
 
   if (modo === 'formulario') {
-    return <EventoForm slug={slug} mode="crear" categorias={categorias} />;
+    return (
+      <div className="w-full">
+        <div className="mx-auto max-w-3xl px-4 pt-6">
+          <button
+            onClick={() => router.push(`/host/${slug}`)}
+            className="mb-6 flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Eventos</span>
+            <span className="text-white/30">/</span>
+            <span className="text-white">Crear evento</span>
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#222]">
+              <CalendarClock className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-[#F5F5F5]">Crear evento</h1>
+              <p className="text-sm text-white/50">
+                Campos obligatorios <span className="text-[#D94242]">*</span>
+              </p>
+            </div>
+          </div>
+        </div>
+        <EventoForm slug={slug} mode="crear" categorias={categorias} />
+      </div>
+    );
   }
 
   return (

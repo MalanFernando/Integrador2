@@ -49,12 +49,12 @@ export function RegisterForm() {
   const onSubmit = async (values: RegisterFormValues) => {
     setError('');
     try {
-      await register({
+      const result = await register({
         email: values.email.toLowerCase(),
         password: values.password,
         nombre: values.nombre,
       });
-      router.push('/');
+      router.push(`/verificar-correo?email=${encodeURIComponent(result.email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrarse');
     }
@@ -113,7 +113,7 @@ export function RegisterForm() {
       <div className="relative">
         <Input
           id="confirmPassword"
-          label="Confirmar contraseña"
+          label="Repetir contraseña"
           type={showConfirm ? 'text' : 'password'}
           placeholder="Repite la contraseña"
           {...registerField('confirmPassword')}
@@ -129,13 +129,31 @@ export function RegisterForm() {
         </button>
       </div>
 
+      <p className="text-sm text-white/60">
+        Al crear una cuenta, aceptas los{' '}
+        <Link href="#" className="underline hover:text-white">
+          Términos y condiciones
+        </Link>{' '}
+        y la{' '}
+        <Link href="#" className="underline hover:text-white">
+          Política de protección de datos
+        </Link>{' '}
+        de la plataforma.
+      </p>
+
+      <div className="text-right">
+        <Link href="/forgot-password" className="text-sm font-semibold text-white hover:underline">
+          Olvidaste tu contraseña
+        </Link>
+      </div>
+
       <Button type="submit" className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Creando cuenta...' : 'Registrarse'}
       </Button>
 
       <div className="relative flex items-center">
         <div className="flex-grow border-t border-white/20" />
-        <span className="flex-shrink mx-4 text-sm text-white/50">O continúa con</span>
+        <span className="flex-shrink mx-4 text-sm text-white/50">O regístrate con</span>
         <div className="flex-grow border-t border-white/20" />
       </div>
 
@@ -156,7 +174,7 @@ export function RegisterForm() {
       <p className="text-center text-sm text-white/60">
         ¿Ya tienes cuenta?{' '}
         <Link href="/login" className="text-white font-bold hover:underline">
-          Inicia sesión
+          Inicia sesión aquí
         </Link>
       </p>
     </form>

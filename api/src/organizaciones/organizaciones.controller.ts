@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { OrganizacionesService } from './organizaciones.service.js';
@@ -70,6 +71,22 @@ export class OrganizacionesController {
   @Get(':id/eventos')
   listEventosDelOrganizador(@Param('id') id: string) {
     return this.organizacionesService.listEventosDelOrganizador(id);
+  }
+
+  @Get()
+  listOrganizadores() {
+    return this.organizacionesService.listOrganizadores();
+  }
+
+  @Get(':id/resenas')
+  listResenasDelOrganizador(
+    @Param('id') id: string,
+    @Query('soloPasados') soloPasados: string,
+  ) {
+    return this.organizacionesService.listResenasDelOrganizador(
+      id,
+      soloPasados === 'true',
+    );
   }
 
   @UseGuards(JwtAuthGuard)

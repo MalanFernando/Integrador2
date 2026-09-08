@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Settings,
   LogOut,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -37,7 +38,7 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: '/organizadores', label: 'Organizadores', icon: Briefcase },
       { href: '/eventos', label: 'Eventos', icon: CalendarCheck2 },
       { href: '/resenas', label: 'Reseñas', icon: Star },
-      { href: '/tickets', label: 'Tickets', icon: Ticket },
+      { href: '/tickets', label: 'Reservaciones', icon: Ticket },
       { href: '/categorias', label: 'Categorías', icon: Shapes },
     ],
   },
@@ -50,7 +51,13 @@ const sections: { label: string; items: NavItem[] }[] = [
   },
 ];
 
-export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
+function SidebarNav({
+  onNavigate,
+  onLogout,
+}: {
+  onNavigate?: () => void;
+  onLogout: () => void;
+}) {
   const pathname = usePathname();
   const { logout } = useAuth();
 
@@ -60,16 +67,7 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
   }
 
   return (
-    <aside className="fixed left-0 top-0 z-30 flex h-screen w-64 flex-col border-r border-white/25 bg-black">
-      <div className="flex items-center justify-between border-b border-white/25 px-6 py-4">
-        <Link href="/dashboard">
-          <img
-            src="/Logotype.svg"
-            alt="Hasta la Vuelta"
-            className="h-10 w-auto"
-          />
-        </Link>
-      </div>
+    <>
       <nav className="flex-1 overflow-y-auto px-6 py-4">
         {sections.map((section) => (
           <div
@@ -87,6 +85,7 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
                   <Link
                     key={link.href}
                     href={link.href}
+                    onClick={onNavigate}
                     className={cn(
                       'flex items-center gap-3 rounded-md px-4 py-3 text-base font-semibold transition-colors',
                       isActive
@@ -112,6 +111,57 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
           Cerrar sesión
         </button>
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function AdminSidebar({
+  open,
+  mobileOpen,
+  onCloseMobile,
+  onLogout,
+}: {
+  open: boolean;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <>
+      {/* Desktop pinned sidebar */}
+      {open && (
+        <aside className="fixed left-0 top-0 z-30 hidden h-screen w-64 flex-col border-r border-white/25 bg-black md:flex">
+          <SidebarNav onLogout={onLogout} />
+        </aside>
+      )}
+
+      {/* Mobile off-canvas drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={onCloseMobile}
+            aria-hidden="true"
+          />
+          <aside className="absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-r border-white/25 bg-black">
+            <div className="flex items-center justify-between px-6 py-4">
+              <img
+                src="/Logotype.svg"
+                alt="Hasta la Vuelta"
+                className="h-8 w-auto"
+              />
+              <button
+                onClick={onCloseMobile}
+                className="text-white/60 hover:text-white"
+                aria-label="Cerrar menú"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <SidebarNav onNavigate={onCloseMobile} onLogout={onLogout} />
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -17,7 +18,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SelectField } from '@/components/ui/select-field';
 import { Field } from '@/components/ui/field';
+import { Avatar } from '@/components/ui/avatar';
+import { UserAutocomplete } from '@/components/usuarios/user-autocomplete';
+import { LocationMapPicker } from '@/components/ubicacion/location-map-picker';
 import type {
+  AdminUsuario,
   Categoria,
   EventoDetalle,
   ScrapedEvento,
@@ -31,6 +36,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  UserPlus,
   X,
   Link2,
   CheckCircle2,
@@ -111,6 +117,16 @@ export function EventoForm({
   categorias,
 }: EventoFormProps) {
   const router = useRouter();
+  const [categoriasLocal, setCategoriasLocal] = useState<Categoria[]>(categorias);
+  const [nuevaCategoriaAbierta, setNuevaCategoriaAbierta] = useState(false);
+  const [nuevaCategoriaNombre, setNuevaCategoriaNombre] = useState('');
+  const [creandoCategoria, setCreandoCategoria] = useState(false);
+  const [categoriaError, setCategoriaError] = useState('');
+  const [organizador, setOrganizador] = useState<AdminUsuario | null>(null);
+  const [organizadorError, setOrganizadorError] = useState('');
+  const [carteleraSeleccion, setCarteleraSeleccion] = useState<
+    Record<number, AdminUsuario | null>
+  >({});
   const [provincias, setProvincias] = useState<Provincia[]>([]);
   const [ciudades, setCiudades] = useState<Ciudad[]>([]);
   const [provinciaId, setProvinciaId] = useState(
@@ -298,6 +314,27 @@ export function EventoForm({
     }
   }
 
+  async function crearCategoria() {
+    const nombre = nuevaCategoriaNombre.trim();
+    if (nombre.length < 3) {
+      setCategoriaError('El nombre debe tener al menos 3 caracteres');
+      return;
+    }
+    setCreandoCategoria(true);
+    setCategoriaError('');
+    try {
+      const creada = await api.post<Categoria>('/categorias', { nombre });
+      setCategoriasLocal((prev) => [...prev, creada]);
+      setValue('categoriaId', String(creada.id), { shouldValidate: true });
+      setNuevaCategoriaAbierta(false);
+      setNuevaCategoriaNombre('');
+    } catch (err) {
+      setCategoriaError(err instanceof Error ? err.message : 'No se pudo crear la categoría');
+    } finally {
+      setCreandoCategoria(false);
+    }
+  }
+
   async function handleFotoCedula(file: File | null) {
     if (!file) return;
     const errorValidacion = validarImagenEvento(file);
@@ -322,6 +359,13 @@ export function EventoForm({
   async function onSubmit(values: EventoFormValues) {
     setSaving(true);
     setSubmitError('');
+    setOrganizadorError('');
+
+    if (mode === 'crear' && !organizador) {
+      setOrganizadorError('Selecciona el organizador al que pertenece este evento');
+      setSaving(false);
+      return;
+    }
 
     let ubicacionId: string | undefined;
     if (mostrarUbicacion) {
@@ -433,6 +477,10 @@ export function EventoForm({
       };
     }
 
+    if (mode === 'crear' && organizador) {
+      payload.organizadorId = organizador.id;
+    }
+
     try {
       if (mode === 'editar' && eventoId) {
         await api.put(`/admin/eventos/${eventoId}`, payload);
@@ -485,6 +533,51 @@ export function EventoForm({
           </div>
         </div>
       )}
+
+      {/* Organizador */}
+      <SectionCard title="Organizador">
+        {mode === 'editar' && initialData?.organizador ? (
+          <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-3 py-2">
+            <Avatar
+              src={initialData.organizador.fotoPerfilUrl ?? undefined}
+              fallback={initialData.organizador.nombre.slice(0, 2).toUpperCase()}
+              size="sm"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-white">
+                {initialData.organizador.nombre} {initialData.organizador.apellido}
+              </p>
+              <p className="truncate text-xs text-white/50">
+                {initialData.organizador.email}
+              </p>
+            </div>
+            <span className="ml-auto text-xs text-white/30">No se puede reasignar</span>
+          </div>
+        ) : (
+          <>
+            <UserAutocomplete
+              label="Buscar organizador"
+              rol="organizador"
+              value={organizador}
+              onSelect={(u) => {
+                setOrganizador(u);
+                setOrganizadorError('');
+              }}
+            />
+            {organizadorError && (
+              <p className="text-sm text-red-400">{organizadorError}</p>
+            )}
+            <Link
+              href="/usuarios/nuevo?rol=organizador"
+              target="_blank"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:underline"
+            >
+              <UserPlus className="h-4 w-4" />
+              El organizador no existe, crear uno nuevo
+            </Link>
+          </>
+        )}
+      </SectionCard>
 
       {/* Datos generales */}
       <SectionCard title="Datos generales">
@@ -555,23 +648,55 @@ export function EventoForm({
         />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Controller
-            control={control}
-            name="categoriaId"
-            render={({ field }) => (
-              <SelectField
-                label="Categoría"
-                required
-                value={field.value}
-                onChange={field.onChange}
-                options={categorias.map((c) => ({
-                  value: String(c.id),
-                  label: c.nombre,
-                }))}
-                error={errors.categoriaId?.message}
-              />
+          <div>
+            <Controller
+              control={control}
+              name="categoriaId"
+              render={({ field }) => (
+                <SelectField
+                  label="Categoría"
+                  required
+                  value={field.value}
+                  onChange={(v) => {
+                    if (v === '__nueva__') {
+                      setNuevaCategoriaAbierta(true);
+                      return;
+                    }
+                    field.onChange(v);
+                  }}
+                  options={[
+                    ...categoriasLocal.map((c) => ({
+                      value: String(c.id),
+                      label: c.nombre,
+                    })),
+                    { value: '__nueva__', label: '+ Otra categoría...' },
+                  ]}
+                  error={errors.categoriaId?.message}
+                />
+              )}
+            />
+            {nuevaCategoriaAbierta && (
+              <div className="mt-2 flex items-end gap-2">
+                <Input
+                  id="nueva-categoria"
+                  label="Nombre de la nueva categoría"
+                  value={nuevaCategoriaNombre}
+                  onChange={(e) => setNuevaCategoriaNombre(e.target.value)}
+                  error={categoriaError}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={creandoCategoria}
+                  onClick={crearCategoria}
+                >
+                  {creandoCategoria ? 'Creando...' : 'Crear'}
+                </Button>
+              </div>
             )}
-          />
+          </div>
           <Input
             id="restriccionAcceso"
             label="Clasificación de edad"
@@ -688,34 +813,57 @@ export function EventoForm({
         {carteleraFieldArray.fields.map((field, index) => (
           <div
             key={field.id}
-            className="grid gap-3 rounded-md border border-white/10 p-3 sm:grid-cols-3"
+            className="space-y-3 rounded-md border border-white/10 p-3"
           >
-            <Input
-              placeholder="Nombre del artista"
-              error={errors.usuariosCartelera?.[index]?.nombre?.message}
-              {...register(`usuariosCartelera.${index}.nombre`)}
-            />
-            <Input
-              placeholder="Usuario (id) opcional"
-              {...register(`usuariosCartelera.${index}.usuarioId`)}
-            />
-            <div className="flex gap-2">
-              <Input
-                placeholder="Red social opcional"
-                error={
-                  errors.usuariosCartelera?.[index]?.redSocial?.message
+            <UserAutocomplete
+              label="Buscar usuario registrado (opcional)"
+              value={carteleraSeleccion[index] ?? null}
+              onSelect={(u) => {
+                setCarteleraSeleccion((prev) => ({ ...prev, [index]: u }));
+                setValue(`usuariosCartelera.${index}.usuarioId`, u?.id ?? '', {
+                  shouldValidate: true,
+                });
+                if (u) {
+                  setValue(
+                    `usuariosCartelera.${index}.nombre`,
+                    `${u.nombre} ${u.apellido}`.trim(),
+                    { shouldValidate: true },
+                  );
                 }
-                {...register(`usuariosCartelera.${index}.redSocial`)}
+              }}
+            />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Input
+                placeholder="Nombre del artista"
+                error={errors.usuariosCartelera?.[index]?.nombre?.message}
+                {...register(`usuariosCartelera.${index}.nombre`)}
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label="Quitar artista"
-                onClick={() => carteleraFieldArray.remove(index)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2 sm:col-span-2">
+                <Input
+                  placeholder="Red social opcional (crea un botón 'Visitar')"
+                  className="flex-1"
+                  error={
+                    errors.usuariosCartelera?.[index]?.redSocial?.message
+                  }
+                  {...register(`usuariosCartelera.${index}.redSocial`)}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Quitar artista"
+                  onClick={() => {
+                    carteleraFieldArray.remove(index);
+                    setCarteleraSeleccion((prev) => {
+                      const next = { ...prev };
+                      delete next[index];
+                      return next;
+                    });
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -820,26 +968,15 @@ export function EventoForm({
               value={referencia}
               onChange={(e) => setReferencia(e.target.value)}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="latitud"
-                label="Latitud"
-                placeholder="Ej. -0.180653"
-                value={latitud}
-                onChange={(e) => setLatitud(e.target.value)}
-              />
-              <Input
-                id="longitud"
-                label="Longitud"
-                placeholder="Ej. -78.467838"
-                value={longitud}
-                onChange={(e) => setLongitud(e.target.value)}
-              />
-            </div>
-            <p className="text-sm text-white/40">
-              Obtén las coordenadas desde Google Maps (clic derecho sobre la
-              ubicación).
-            </p>
+            <LocationMapPicker
+              lat={latitud.trim() ? Number(latitud) : null}
+              lng={longitud.trim() ? Number(longitud) : null}
+              onChange={({ lat, lng }) => {
+                setLatitud(String(lat));
+                setLongitud(String(lng));
+              }}
+              onAddressFound={(direccion) => setDireccionLinea1(direccion)}
+            />
             {locationError && (
               <p className="text-sm text-red-400">{locationError}</p>
             )}

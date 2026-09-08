@@ -1,354 +1,353 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Star } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { compartirEvento } from '@/lib/share';
+import { ProfileEventCard, CreateEventCard } from '@/components/profile';
+import type { ProfileEventCardData } from '@/components/profile';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { MisEventosList } from '@/components/eventos/mis-eventos-list';
-import { CrearEventoModal } from '@/components/eventos/crear-evento-modal';
-import { SeguidoresModal } from '@/components/social/seguidores-modal';
-import { HostTabs } from '@/components/eventos/host-tabs';
-import type {
-  EstadisticasEvento,
-  EventoGestion,
-  PublicProfile,
-  SocialListResponse,
-  User,
-} from '@/types';
-import { Calendar, Heart, Plus, Stars, Users } from 'lucide-react';
+import { EventActionModal } from '@/components/eventos/event-action-modal';
+import { useHostContext } from '@/components/eventos/host-context';
+import type { EventoGestion, PublicProfile, Resena } from '@/types';
+import { timeAgo } from '@/lib/utils';
 
 export default function HostPage() {
-  const params = useParams();
   const router = useRouter();
-  const slug = params.slug as string;
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
+  const { usuario, isOwner, slug, visitTab, setModalCrearOpen, refetchStats } =
+    useHostContext();
 
-  const [usuario, setUsuario] = useState<User | null>(null);
-  const [perfil, setPerfil] = useState<PublicProfile | null>(null);
   const [eventos, setEventos] = useState<EventoGestion[] | null>(null);
-  const [seguidores, setSeguidores] = useState(0);
-  const [guardados30d, setGuardados30d] = useState(0);
-  const [reservas30d, setReservas30d] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [modalCrearOpen, setModalCrearOpen] = useState(false);
-  const [modalFollowersOpen, setModalFollowersOpen] = useState(false);
-
-  const isOwner = user?.rol === 'organizador' && user?.slug === slug;
-
-  useEffect(() => {
-    let active = true;
-    api
-      .get<User>(`/usuarios/slug/${slug}`)
-      .then((data) => {
-        if (active) setUsuario(data);
-      })
-      .catch(() => {
-        if (active) setError('Organizador no encontrado');
-      });
-    return () => {
-      active = false;
-    };
-  }, [slug]);
+  const [perfil, setPerfil] = useState<PublicProfile | null>(null);
+  const [resenas, setResenas] = useState<Resena[] | null>(null);
+  const [mostrarFormResena, setMostrarFormResena] = useState(false);
+  const [resenaEventoId, setResenaEventoId] = useState('');
+  const [resenaPuntuacion, setResenaPuntuacion] = useState(0);
+  const [resenaComentario, setResenaComentario] = useState('');
+  const [resenaError, setResenaError] = useState('');
+  const [resenaEnviando, setResenaEnviando] = useState(false);
+  const [actionModal, setActionModal] = useState<{ eventoId: string; action: 'hide' | 'delete' | 'show' | 'suspend' } | null>(null);
 
   useEffect(() => {
-    if (!usuario || authLoading) return;
-    let active = true;
-
     if (isOwner) {
-      Promise.all([
-        api.get<EventoGestion[]>('/eventos/mis-eventos'),
-        api.get<SocialListResponse>(
-          `/social/seguidores/${usuario.id}?limit=1&page=1`,
-        ),
-      ])
-        .then(async ([mis, seg]) => {
-          const stats = await Promise.all(
-            mis.map((e) =>
-              api
-                .get<EstadisticasEvento>(
-                  `/eventos/${e.id}/estadisticas?filtro=mes`,
-                )
-                .catch(() => null),
-            ),
-          );
-          if (!active) return;
-          setEventos(mis);
-          setSeguidores(seg?.total ?? 0);
-          setGuardados30d(
-            stats.reduce((acc, s) => acc + (s?.favoritos ?? 0), 0),
-          );
-          setReservas30d(
-            stats.reduce((acc, s) => acc + (s?.reservas ?? 0), 0),
-          );
-          setLoading(false);
-        })
-        .catch(() => {
-          if (active) {
-            setEventos([]);
-            setLoading(false);
-          }
-        });
+      api.get<EventoGestion[]>('/eventos/mis-eventos').then(setEventos).catch(() => setEventos([]));
     } else {
       api
         .get<PublicProfile>(`/usuarios/perfil/${usuario.id}`)
         .then((p) => {
-          if (active) setPerfil(p);
+          setPerfil(p);
+          return api.get<Resena[]>(`/organizadores/${usuario.id}/resenas`).catch(() => []);
         })
-        .catch(() => {
-          if (active) setError('No se pudo cargar el perfil');
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
+        .then(setResenas)
+        .catch(() => setPerfil(null));
     }
+  }, [isOwner, usuario.id]);
 
-    return () => {
-      active = false;
-    };
-  }, [usuario, authLoading, isOwner, refreshKey]);
+  async function enviarResena(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resenaEventoId) {
+      setResenaError('Selecciona un evento');
+      return;
+    }
+    if (resenaPuntuacion === 0) {
+      setResenaError('Selecciona una puntuación de 1 a 5 estrellas');
+      return;
+    }
+    setResenaEnviando(true);
+    setResenaError('');
+    try {
+      await api.post(`/organizadores/${usuario.id}/resenas`, {
+        eventoId: resenaEventoId,
+        puntuacion: resenaPuntuacion,
+        comentario: resenaComentario,
+      });
+      setMostrarFormResena(false);
+      setResenaPuntuacion(0);
+      setResenaComentario('');
+      const eventoId = resenaEventoId;
+      setResenaEventoId('');
+      const nuevas = await api.get<Resena[]>(`/resenas?eventoId=${eventoId}`);
+      setResenas((prev) => [...(prev ?? []).filter((r) => r.eventoId !== eventoId), ...nuevas]);
+      refetchStats();
+    } catch (err) {
+      setResenaError(err instanceof Error ? err.message : 'No se pudo publicar la reseña');
+    } finally {
+      setResenaEnviando(false);
+    }
+  }
 
-  if (error) {
+  async function handleHide(eventoId: string, motivo: string) {
+    await api.patch(`/eventos/${eventoId}/visibilidad`, { visibilidad: 'oculto', motivo: motivo || undefined });
+    setActionModal(null);
+    refetchStats();
+    if (isOwner) {
+      const updated = await api.get<EventoGestion[]>('/eventos/mis-eventos');
+      setEventos(updated);
+    }
+  }
+
+  async function handleShow(eventoId: string) {
+    await api.patch(`/eventos/${eventoId}/visibilidad`, { visibilidad: 'publico' });
+    setActionModal(null);
+    refetchStats();
+    if (isOwner) {
+      const updated = await api.get<EventoGestion[]>('/eventos/mis-eventos');
+      setEventos(updated);
+    }
+  }
+
+  async function handleDelete(eventoId: string, motivo: string) {
+    await api.delete(`/eventos/${eventoId}`, { motivo });
+    setActionModal(null);
+    refetchStats();
+    if (isOwner) {
+      const updated = await api.get<EventoGestion[]>('/eventos/mis-eventos');
+      setEventos(updated);
+    }
+  }
+
+  async function handleSuspend(eventoId: string, motivo: string) {
+    await api.delete(`/eventos/${eventoId}`, { motivo });
+    setActionModal(null);
+    refetchStats();
+    if (isOwner) {
+      const updated = await api.get<EventoGestion[]>('/eventos/mis-eventos');
+      setEventos(updated);
+    }
+  }
+
+  async function handleActionConfirm(motivo: string) {
+    if (!actionModal) return;
+    if (actionModal.action === 'hide') {
+      await handleHide(actionModal.eventoId, motivo);
+    } else if (actionModal.action === 'delete') {
+      await handleDelete(actionModal.eventoId, motivo);
+    } else if (actionModal.action === 'suspend') {
+      await handleSuspend(actionModal.eventoId, motivo);
+    }
+  }
+
+  if (!isOwner && visitTab === 'Reseñas') {
+    if (resenas === null) {
+      return (
+        <div className="flex justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
+        </div>
+      );
+    }
+    const resenasVisibles = resenas.filter((r) => r.estado === 'visible');
+    const promedio =
+      resenasVisibles.length > 0
+        ? resenasVisibles.reduce((sum, r) => sum + r.puntuacion, 0) / resenasVisibles.length
+        : 0;
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <p className="text-white/70">{error}</p>
-        <Link href="/">
-          <Button variant="outline">Volver al inicio</Button>
-        </Link>
+      <div>
+        <div className="flex items-center gap-2 text-white">
+            <span className="text-3xl font-bold">{promedio.toFixed(1)}</span>
+          <Star className="h-5 w-5 fill-white text-white" />
+        </div>
+        <div className="flex items-center justify-between gap-4 mt-1">
+          <p className="text-white/50 text-sm">
+            Basado en {resenasVisibles.length} opinion{resenasVisibles.length === 1 ? '' : 'es'} de los usuarios
+          </p>
+          {user && user.id !== usuario.id && (
+            <Button variant="secondary" size="sm" onClick={() => setMostrarFormResena((v) => !v)}>
+              Agregar una reseña
+            </Button>
+          )}
+        </div>
+
+        {mostrarFormResena && (
+          <form onSubmit={enviarResena} className="mt-4 rounded-xl bg-white/5 p-4 space-y-3 max-w-lg">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white">Evento</label>
+              <select
+                value={resenaEventoId}
+                onChange={(e) => setResenaEventoId(e.target.value)}
+                className="w-full h-10 rounded-md border border-white/20 bg-transparent px-3 text-sm text-white focus:outline-none"
+              >
+                <option value="" className="bg-[#1a1a1a]">Selecciona un evento</option>
+                {(perfil?.eventos ?? [])
+                  .filter((e) => new Date(e.fechaFin) < new Date())
+                  .map((e) => (
+                    <option key={e.id} value={e.id} className="bg-[#1a1a1a]">{e.titulo}</option>
+                  ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <button type="button" key={i} onClick={() => setResenaPuntuacion(i + 1)} className="p-1">
+                  <Star className={`h-5 w-5 transition-colors ${i < resenaPuntuacion ? 'text-yellow-400 fill-yellow-400' : 'text-white/20'}`} />
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={resenaComentario}
+              onChange={(e) => setResenaComentario(e.target.value)}
+              placeholder="Escribe tu comentario"
+              maxLength={1000}
+              rows={3}
+              className="w-full rounded-lg bg-white/5 border border-white/10 text-white text-sm p-3 resize-none focus:outline-none focus:border-white/30"
+            />
+            {resenaError && <p className="text-xs text-[#FF8284]">{resenaError}</p>}
+            <Button type="submit" disabled={resenaEnviando}>
+              {resenaEnviando ? 'Publicando...' : 'Publicar reseña'}
+            </Button>
+          </form>
+        )}
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {resenasVisibles.length === 0 ? (
+            <p className="col-span-full text-center text-white/50 py-16">Aún no hay reseñas.</p>
+          ) : (
+            resenasVisibles.map((r) => {
+              const autor = r.autor;
+              const autorHref = autor?.slug ?? autor?.id;
+              const autorNombre = autor ? `${autor.nombre ?? ''}${autor.apellido ? ` ${autor.apellido}` : ''}` : null;
+              const puntuacion = Number(r.puntuacion?.toFixed(1));
+              return (
+                <div key={r.id} className="rounded-xl bg-white/5 p-4 h-full">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/40 text-xs mb-2">{timeAgo(r.createdAt)}</p>
+                      {autorHref && autorNombre ? (
+                        <Link href={`/perfil/${autorHref}`} className="flex items-center gap-2 mb-1">
+                          <Avatar
+                            src={autor.fotoPerfilUrl}
+                            fallback={`${autor.nombre?.[0] ?? ''}${autor.apellido?.[0] ?? ''}`.toUpperCase() || '?'}
+                            size="sm"
+                          />
+                          <span className="text-white text-sm font-medium hover:text-white/80">
+                            {autorNombre}
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar
+                            src={autor?.fotoPerfilUrl}
+                            fallback="?"
+                            size="sm"
+                          />
+                          <span className="text-white text-sm font-medium">
+                            {autorNombre ?? 'Usuario'}
+                          </span>
+                        </div>
+                      )}
+                      {r.evento?.titulo && (
+                        <p className="text-white/30 text-xs mb-2">{r.evento.titulo}</p>
+                      )}
+                      {r.comentario && (
+                        <p className="text-white/60 text-sm leading-relaxed">{r.comentario}</p>
+                      )}
+                    </div>
+                    {puntuacion > 0 && (
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <span className="text-white text-sm font-medium">{puntuacion.toFixed(1)}</span>
+                        <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     );
   }
 
-  if (loading || !usuario) {
+  const ahora = new Date();
+  const proximosEventos = perfil?.eventos.filter(
+    (e) => e.estado === 'aprobado' && new Date(e.fechaFin) >= ahora,
+  ) ?? [];
+  const pasadosEventos = perfil?.eventos.filter(
+    (e) =>
+      e.estado === 'finalizado' ||
+      (e.estado === 'aprobado' && new Date(e.fechaFin) < ahora),
+  ) ?? [];
+
+  interface CardSource {
+    id: string;
+    titulo: string;
+    fechaInicio: string;
+    imagenes: string[];
+    esGratuito: boolean;
+    online: boolean;
+  }
+  const toCardData = (list: CardSource[]): ProfileEventCardData[] =>
+    list.map((e) => ({
+      id: e.id,
+      titulo: e.titulo,
+      fechaInicio: e.fechaInicio,
+      imagenes: e.imagenes,
+      esGratuito: e.esGratuito,
+      online: e.online,
+    }));
+
+  const eventCardData: ProfileEventCardData[] = isOwner
+    ? toCardData(eventos ?? [])
+    : toCardData(visitTab === 'Eventos pasados' ? pasadosEventos : proximosEventos);
+
+  if (isOwner && eventos === null) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
       </div>
     );
   }
 
-  // Vista pública (modo usuario normal)
-  if (!isOwner) {
-    const eventosAprobados =
-      perfil?.eventos.filter((e) => e.estado === 'aprobado') ?? [];
-    return (
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-6 mb-12 sm:flex-row sm:items-start">
-          <Avatar
-            src={perfil?.fotoPerfilUrl}
-            fallback={perfil?.nombre.charAt(0) ?? '?'}
-            size="xl"
-          />
-          <div className="text-center sm:text-left flex-1">
-            <h1 className="text-3xl font-bold text-white">
-              {perfil?.nombre ?? usuario.nombre}
-            </h1>
-            {perfil?.biografia && (
-              <p className="mt-2 text-white/70 max-w-xl">{perfil.biografia}</p>
-            )}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
-              <div className="flex items-center gap-2 text-white/60">
-                <Users className="h-4 w-4" />
-                <span>{perfil?.seguidores ?? 0} seguidores</span>
-              </div>
-              <div className="flex items-center gap-2 text-white/60">
-                <Calendar className="h-4 w-4" />
-                <span>{eventosAprobados.length} eventos</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <section>
-          <h2 className="mb-6 text-xl font-semibold text-white">
-            Próximos eventos
-          </h2>
-          {eventosAprobados.length === 0 ? (
-            <p className="text-white/50">No hay eventos programados.</p>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {eventosAprobados.map((evento) => (
-                <Link key={evento.id} href={`/eventos/${evento.id}`}>
-                  <Card className="overflow-hidden border-white/10 bg-transparent transition-colors hover:border-white/30">
-                    {evento.imagenes?.[0] && (
-                      <img
-                        src={evento.imagenes[0]}
-                        alt={evento.titulo}
-                        className="h-48 w-full object-cover"
-                      />
-                    )}
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-white">
-                        {evento.titulo}
-                      </h3>
-                      <p className="mt-1 text-sm text-white/60">
-                        {new Date(evento.fechaInicio).toLocaleDateString(
-                          'es-EC',
-                          {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          },
-                        )}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-      </div>
-    );
-  }
-
-  // Vista de gestión (organizador dueño)
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Header del organizador */}
-      <Card className="overflow-hidden border-white/10">
-        {usuario.fotoPortada && (
-          <img
-            src={usuario.fotoPortada}
-            alt=""
-            className="h-40 w-full object-cover"
-          />
-        )}
-        <CardHeader className="gap-4">
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <Avatar
-              src={usuario.fotoPerfilUrl}
-              fallback={usuario.nombre.charAt(0)}
-              size="xl"
-              className="ring-4 ring-black"
-            />
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                <h1 className="text-2xl font-bold text-white">
-                  {usuario.nombre}
-                </h1>
-                {usuario.etiqueta && <Badge>{usuario.etiqueta}</Badge>}
-              </div>
-              {usuario.biografia && (
-                <p className="mt-1 text-sm text-white/60 max-w-xl">
-                  {usuario.biografia}
-                </p>
-              )}
-              <p className="mt-1 text-sm text-white/40">@{usuario.slug}</p>
-
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-6 sm:justify-start">
-                <button
-                  className="flex items-center gap-2 text-white/70 hover:text-white"
-                  onClick={() => setModalFollowersOpen(true)}
-                >
-                  <Users className="h-4 w-4" />
-                  <span>
-                    <span className="font-semibold text-white">
-                      {seguidores}
-                    </span>{' '}
-                    seguidores
-                  </span>
-                </button>
-                <span className="flex items-center gap-2 text-white/70">
-                  <Heart className="h-4 w-4" />
-                  <span>
-                    <span className="font-semibold text-white">
-                      {guardados30d}
-                    </span>{' '}
-                    guardados (30d)
-                  </span>
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-2 sm:items-end">
-              <Button onClick={() => setModalCrearOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Crear evento
-              </Button>
-              <Badge className="gap-1">
-                <Stars className="h-3 w-3" />
-                Score: —
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Contadores */}
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Counter label="Eventos" value={eventos?.length ?? 0} />
-        <Counter label="Reservas (30d)" value={reservas30d} />
-        <Counter label="Seguidores" value={seguidores} />
-        <Counter label="Guardados (30d)" value={guardados30d} />
-      </div>
-      {eventos && eventos.length > 0 && (
-        <p className="mt-2 text-xs text-white/40">
-          El score (requisito D8) no está implementado en la API. Guardados y
-          reservas corresponden al periodo del último mes.
+    <div>
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      {isOwner && <CreateEventCard onClick={() => setModalCrearOpen(true)} />}
+      {eventCardData.length === 0 ? (
+        <p className="col-span-full text-center text-[#6b6b6b] py-20">
+          {isOwner ? 'Aún no has creado eventos.' : 'Este organizador aún no tiene eventos.'}
         </p>
+      ) : (
+        eventCardData.map((evento) => (
+          <ProfileEventCard
+            key={evento.id}
+            data={evento}
+            variant={isOwner ? 'owner' : 'visitor'}
+            onEdit={isOwner ? () => router.push(`/host/${slug}/eventos/${evento.id}/editar`) : undefined}
+            onHide={isOwner ? () => setActionModal({ eventoId: evento.id, action: 'hide' }) : undefined}
+            onShow={isOwner ? () => handleShow(evento.id) : undefined}
+            onDelete={isOwner ? () => setActionModal({ eventoId: evento.id, action: 'delete' }) : undefined}
+            onSuspend={isOwner ? () => setActionModal({ eventoId: evento.id, action: 'suspend' }) : undefined}
+            onShare={() => compartirEvento({ id: evento.id, titulo: evento.titulo })}
+          />
+        ))
       )}
 
-      <div className="mt-6">
-        <HostTabs slug={slug} />
-      </div>
-
-      <section className="mt-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Mis eventos</h2>
-          {eventos && eventos.length > 0 && (
-            <span className="text-sm text-white/50">
-              {eventos.length} evento{eventos.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-        <MisEventosList
-          slug={slug}
-          eventos={eventos ?? []}
-          onChanged={() => setRefreshKey((k) => k + 1)}
+      {actionModal && actionModal.action !== 'show' && (
+        <EventActionModal
+          open={true}
+          onClose={() => setActionModal(null)}
+          title={
+            actionModal.action === 'hide'
+              ? 'Ocultar evento'
+              : actionModal.action === 'suspend'
+                ? 'Suspender evento'
+                : 'Eliminar evento'
+          }
+          actionLabel={
+            actionModal.action === 'hide'
+              ? 'Ocultar'
+              : actionModal.action === 'suspend'
+                ? 'Suspender'
+                : 'Eliminar'
+          }
+          isDestructive={actionModal.action === 'delete' || actionModal.action === 'suspend'}
+          onConfirm={handleActionConfirm}
         />
-      </section>
-
-      <SeguidoresModal
-        open={modalFollowersOpen}
-        onClose={() => setModalFollowersOpen(false)}
-        type="seguidores"
-        userId={usuario.id}
-      />
-
-      <CrearEventoModal
-        open={modalCrearOpen}
-        onClose={() => setModalCrearOpen(false)}
-        onSelectUrl={(url) =>
-          router.push(
-            `/host/${slug}/eventos/nuevo?modo=url&url=${encodeURIComponent(
-              url,
-            )}`,
-          )
-        }
-        onSelectFormulario={() =>
-          router.push(`/host/${slug}/eventos/nuevo?modo=formulario`)
-        }
-      />
+      )}
+      </div>
     </div>
-  );
-}
-
-function Counter({ label, value }: { label: string; value: number }) {
-  return (
-    <Card className="border-white/10 bg-white/5">
-      <CardContent className="p-4">
-        <p className="text-xs uppercase tracking-wide text-white/50">
-          {label}
-        </p>
-        <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-      </CardContent>
-    </Card>
   );
 }

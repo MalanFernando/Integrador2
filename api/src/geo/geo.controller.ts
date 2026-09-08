@@ -7,7 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { GeoService } from './geo.service.js';
+import { GeoService, RutaParams } from './geo.service.js';
 import { CreateUbicacionDto } from './dto/create-ubicacion.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
@@ -39,20 +39,25 @@ export class GeoController {
   }
 
   @Get('rutas')
-  calcularRuta(
+  async calcularRuta(
     @Query('origenLat') origenLat: string,
     @Query('origenLng') origenLng: string,
     @Query('destinoLat') destinoLat: string,
     @Query('destinoLng') destinoLng: string,
     @Query('modo') modo: string,
+    @Query('detallado') detallado?: string,
   ) {
-    return this.geoService.calcularRuta({
+    const params: RutaParams = {
       origenLat: Number(origenLat),
       origenLng: Number(origenLng),
       destinoLat: Number(destinoLat),
       destinoLng: Number(destinoLng),
       modo: modo === 'caminando' ? 'caminando' : 'vehiculo',
-    });
+    };
+    if (detallado === 'true') {
+      return { rutas: await this.geoService.calcularRutasConPasos(params) };
+    }
+    return this.geoService.calcularRuta(params);
   }
 
   @Get('compartir')
@@ -60,11 +65,17 @@ export class GeoController {
     @Query('lat') lat: string,
     @Query('lng') lng: string,
     @Query('nombre') nombre?: string,
+    @Query('origenLat') origenLat?: string,
+    @Query('origenLng') origenLng?: string,
+    @Query('travelmode') travelmode?: string,
   ) {
     return this.geoService.generarLinksCompartir(
       Number(lat),
       Number(lng),
       nombre,
+      origenLat !== undefined ? Number(origenLat) : undefined,
+      origenLng !== undefined ? Number(origenLng) : undefined,
+      travelmode === 'walking' ? 'walking' : 'driving',
     );
   }
 }

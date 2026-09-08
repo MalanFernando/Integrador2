@@ -69,7 +69,7 @@ export class SocialService {
       );
     }
 
-    qb.orderBy('sg."created_at"', 'DESC').skip(skip).take(limit);
+    qb.orderBy({ 'sg.createdAt': 'DESC' }).skip(skip).take(limit);
 
     const [seguidores, total] = await qb.getManyAndCount();
 
@@ -100,7 +100,7 @@ export class SocialService {
       );
     }
 
-    qb.orderBy('sg."created_at"', 'DESC').skip(skip).take(limit);
+    qb.orderBy({ 'sg.createdAt': 'DESC' }).skip(skip).take(limit);
 
     const [siguiendo, total] = await qb.getManyAndCount();
 

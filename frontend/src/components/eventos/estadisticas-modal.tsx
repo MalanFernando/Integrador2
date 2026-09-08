@@ -53,7 +53,7 @@ function DonutResenas({
 
   if (total === 0) {
     return (
-      <div className="flex min-h-20 items-center justify-center rounded-md border border-slate-200 p-4 text-sm text-slate-500">
+      <div className="flex min-h-20 items-center justify-center rounded-md border border-white/10 bg-white/5 p-4 text-sm text-white/50">
         Aún no hay reseñas en este periodo
       </div>
     );
@@ -85,19 +85,19 @@ function DonutResenas({
         className="relative h-32 w-32 shrink-0 rounded-full"
         style={{ background: `conic-gradient(${gradient})` }}
       >
-        <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-white">
-          <span className="text-xl font-bold text-slate-900">
+        <div className="absolute inset-3 flex flex-col items-center justify-center rounded-full bg-[#101010]">
+          <span className="text-xl font-bold text-white">
             {Number(stats.reseñas.promedio || 0).toFixed(1)}
           </span>
-          <Star className="h-3 w-3 text-slate-400" />
+          <Star className="h-3 w-3 text-white/40" />
         </div>
       </div>
       <div className="space-y-1.5">
         {segments.map((s) => (
           <div key={s.star} className="flex items-center gap-2 text-sm">
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-            <span className="w-10 text-slate-700">{s.star} estrella{s.star > 1 ? 's' : ''}</span>
-            <span className="text-slate-500">{s.valor} ({Math.round(s.pct)}%)</span>
+            <span className="w-10 text-white/70">{s.star} estrella{s.star > 1 ? 's' : ''}</span>
+            <span className="text-white/50">{s.valor} ({Math.round(s.pct)}%)</span>
           </div>
         ))}
       </div>
@@ -168,80 +168,80 @@ function ModalContent({
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-transparent" />
+          <div className="flex justify-center py-10">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
         </div>
       ) : error ? (
         <p className="text-sm text-red-400">{error}</p>
       ) : stats ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-md border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-500">
+            <div className="rounded-md border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center gap-2 text-white/50">
                 <Eye className="h-4 w-4" />
                 <span className="text-xs">Visitas</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {stats.visitas}
               </p>
             </div>
-            <div className="rounded-md border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-500">
+            <div className="rounded-md border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center gap-2 text-white/50">
                 <Ticket className="h-4 w-4" />
                 <span className="text-xs">Reservas</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {stats.reservas}
               </p>
             </div>
-            <div className="rounded-md border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-500">
+            <div className="rounded-md border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center gap-2 text-white/50">
                 <Heart className="h-4 w-4" />
                 <span className="text-xs">Favoritos</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {stats.favoritos}
               </p>
             </div>
-            <div className="rounded-md border border-slate-200 p-3">
-              <div className="flex items-center gap-2 text-slate-500">
+            <div className="rounded-md border border-white/10 bg-white/5 p-3">
+              <div className="flex items-center gap-2 text-white/50">
                 <Star className="h-4 w-4" />
                 <span className="text-xs">Reseñas</span>
               </div>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+              <p className="mt-1 text-2xl font-bold text-white">
                 {stats.reseñas.total}
               </p>
             </div>
           </div>
 
           <div>
-            <h3 className="mb-2 text-sm font-medium text-slate-900">
+            <h3 className="mb-2 text-sm font-medium text-white">
               Reseñas por puntuación
             </h3>
             <DonutResenas stats={stats} distribucion={distribucion} />
           </div>
 
           <div>
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
               <Users className="h-4 w-4" />
               Ocupación por localidad
             </h3>
             {(stats.localidades ?? []).length === 0 ? (
-              <p className="text-sm text-slate-500">Sin localidades en este periodo</p>
+              <p className="text-sm text-white/50">Sin localidades en este periodo</p>
             ) : (
               <div className="space-y-3">
                 {stats.localidades.map((localidad) => (
                   <div key={localidad.nombre}>
                     <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="text-slate-700">
+                      <span className="text-white/70">
                         {localidad.nombre}
                       </span>
-                      <span className="text-slate-500">
+                      <span className="text-white/50">
                         {localidad.totalReservas} / {localidad.capacidad} (
                         {Math.round(localidad.porcentajeOcupacion)}%)
                       </span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500"
                         style={{

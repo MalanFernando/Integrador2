@@ -1,43 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { HostTabs } from '@/components/eventos/host-tabs';
+import { useHostContext } from '@/components/eventos/host-context';
 import { EstadisticasModal } from '@/components/eventos/estadisticas-modal';
 import { Badge } from '@/components/ui/badge';
 import type { EventoGestion } from '@/types';
 import { BarChart3, Calendar, Info, Ticket } from 'lucide-react';
 
 export default function HostTicketsPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const { user, isLoading: authLoading } = useAuth();
+  const { isOwner } = useHostContext();
 
   const [eventos, setEventos] = useState<EventoGestion[] | null>(null);
   const [error, setError] = useState('');
   const [statsEvento, setStatsEvento] = useState<EventoGestion | null>(null);
 
-  const isOwner = user?.rol === 'organizador' && user?.slug === slug;
-
   useEffect(() => {
-    if (authLoading || !isOwner) return;
+    if (!isOwner) return;
     api
       .get<EventoGestion[]>('/eventos/mis-eventos')
       .then(setEventos)
       .catch((err) => setError((err as Error).message));
-  }, [authLoading, isOwner]);
-
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
-      </div>
-    );
-  }
+  }, [isOwner]);
 
   if (!isOwner) {
     return (
@@ -50,10 +36,8 @@ export default function HostTicketsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <HostTabs slug={slug} />
-
-      <div className="mt-6 flex items-center gap-3">
+    <div className="mx-auto max-w-5xl">
+      <div className="flex items-center gap-3">
         <Ticket className="h-6 w-6 text-white" />
         <h1 className="text-2xl font-bold text-white">Tickets</h1>
       </div>

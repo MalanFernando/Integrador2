@@ -56,6 +56,16 @@ export class CarteleraArtistaDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(100)
+  rol?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  orden?: number;
+
+  @IsOptional()
+  @IsString()
   @MaxLength(500)
   redSocial?: string;
 }
@@ -108,6 +118,10 @@ export class PreguntaFrecuenteDto {
 }
 
 export class CreateEventoDto {
+  @IsOptional()
+  @IsString()
+  organizadorId?: string;
+
   @IsInt()
   categoriaId: number;
 

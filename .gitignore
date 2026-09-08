@@ -20,3 +20,15 @@ build/
 # Archivos de Next.js/paquetes
 package-lock.json
 yarn.lock
+
+# Visual Studio
+.vs/
+*.user
+
+# Reportes ASP.NET
+reportes/bin/
+reportes/obj/
+
+# IDE / tags
+site.config
+tags/
